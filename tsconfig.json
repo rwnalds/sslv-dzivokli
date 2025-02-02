@@ -6,11 +6,7 @@
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@/components/*": ["components/*"],
-      "@/pages/*": ["pages/*"],
-      "@/app/*": ["app/*"],
-      "@/lib/*": ["lib/*"],
-      "@/styles/*": ["styles/*"]
+      "@/*": ["src/*"]
     },
     "strict": true,
     "forceConsistentCasingInFileNames": true,
@@ -28,6 +24,12 @@
       }
     ]
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "next.config.js"],
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    "next.config.js"
+  ],
   "exclude": ["node_modules"]
 }

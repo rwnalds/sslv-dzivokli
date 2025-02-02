@@ -7,8 +7,8 @@ export function ListingsList({ listings }: { listings: FoundListing[] }) {
   if (listings.length === 0) {
     return (
       <p className="text-base-content/70">
-        No listings found yet. We'll notify you when new apartments matching
-        your criteria appear!
+        No listings found yet. We&apos;ll notify you when new apartments
+        matching your criteria appear!
       </p>
     );
   }

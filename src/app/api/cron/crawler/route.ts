@@ -1,92 +1,20 @@
-import { eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/neon-http";
-import { JSDOM } from "jsdom";
+import { sendNotification } from "@/app/actions";
+import { scrapeSSlv } from "@/lib/ss/scraper";
+import { prisma } from "@/utils/get-prisma";
 import { NextResponse } from "next/server";
-import { sendNotification } from "src/app/install/actions";
-import * as schema from "src/db/schema";
-import { foundListings, searchCriteria } from "src/db/schema";
 
 export const dynamic = "force-dynamic";
-
-const db = drizzle(process.env.DATABASE_URL!, { schema });
-
-async function crawlSSLV(criteria: schema.SearchCriteria) {
-  // Base URL for Riga apartments
-  let url = "https://www.ss.lv/lv/real-estate/flats/riga/";
-  if (criteria.district) {
-    url += `${criteria.district.toLowerCase()}/`;
-  }
-  url += "sell/";
-
-  // Add filter parameters
-  const params = new URLSearchParams();
-  if (criteria.minPrice)
-    params.append("topt[8][min]", criteria.minPrice.toString());
-  if (criteria.maxPrice)
-    params.append("topt[8][max]", criteria.maxPrice.toString());
-  if (criteria.minRooms)
-    params.append("topt[1][min]", criteria.minRooms.toString());
-  if (criteria.maxRooms)
-    params.append("topt[1][max]", criteria.maxRooms.toString());
-  if (criteria.minArea)
-    params.append("topt[3][min]", criteria.minArea.toString());
-  if (criteria.maxArea)
-    params.append("topt[3][max]", criteria.maxArea.toString());
-
-  const fullUrl = `${url}?${params.toString()}`;
-
-  try {
-    const response = await fetch(fullUrl);
-    const html = await response.text();
-    const dom = new JSDOM(html);
-    const document = dom.window.document;
-
-    const listings: schema.NewFoundListing[] = [];
-    const rows = document.querySelectorAll("tr[id^='tr_']");
-
-    for (const row of rows) {
-      const titleEl = row.querySelector("a.am");
-      if (!titleEl) continue;
-
-      const priceEl = row.querySelector("td.msga2-o");
-      const detailsEl = row.querySelector("td.msga2:nth-child(4)");
-      const locationEl = row.querySelector("td.msga2-o:nth-child(5)");
-
-      // Extract values
-      const priceStr = priceEl?.textContent?.replace(/[^0-9.]/g, "") || null;
-      const roomsStr = detailsEl?.textContent?.split(" ")[0];
-      const areaStr = detailsEl?.textContent?.split(" ")[3] || null;
-
-      const listing: schema.NewFoundListing = {
-        ssUrl: "https://www.ss.lv" + titleEl.getAttribute("href"),
-        title: titleEl.textContent?.trim() || "",
-        price: priceStr,
-        rooms: roomsStr ? parseInt(roomsStr, 10) : null,
-        area: areaStr,
-        district: locationEl?.textContent?.trim() || null,
-        criteriaId: criteria.id,
-        description: null,
-        notified: false,
-      };
-
-      listings.push(listing);
-    }
-
-    return listings;
-  } catch (error) {
-    console.error("Failed to crawl SS.lv:", error);
-    return [];
-  }
-}
 
 export async function GET() {
   try {
     // Get all active search criteria
-    const activeCriteria = await db.query.searchCriteria.findMany({
-      where: eq(searchCriteria.isActive, true),
-      with: {
+    const activeCriteria = await prisma.searchCriteria.findMany({
+      where: {
+        isActive: true,
+      },
+      include: {
         user: {
-          with: {
+          include: {
             pushSubscription: true,
           },
         },
@@ -96,46 +24,75 @@ export async function GET() {
     let totalNewListings = 0;
 
     for (const criteria of activeCriteria) {
-      const listings = await crawlSSLV(criteria);
+      try {
+        const listings = await scrapeSSlv(criteria);
 
-      for (const listing of listings) {
-        try {
-          // Try to insert the listing, skip if URL already exists
-          await db.insert(foundListings).values(listing);
-          totalNewListings++;
+        for (const listing of listings) {
+          try {
+            // Ensure all required fields are present and have correct types
+            if (!listing.ssUrl || !listing.title) {
+              console.error("Missing required fields for listing:", listing);
+              continue;
+            }
 
-          // Send notification if user has push subscription
-          if (criteria.user.pushSubscription) {
-            const subscription = JSON.parse(
-              criteria.user.pushSubscription.subscription
-            ) as PushSubscription;
+            // Insert with validated data
+            await prisma.foundListing.create({
+              data: {
+                criteriaId: criteria.id,
+                ssUrl: listing.ssUrl,
+                title: listing.title,
+                price: listing.price ? Number(listing.price) : null,
+                rooms: listing.rooms || null,
+                area: listing.area ? Number(listing.area) : null,
+                district: listing.district || null,
+                description: listing.description || null,
+                imageUrl: listing.imageUrl || null,
+                notified: false,
+              },
+            });
 
-            const price = listing.price
-              ? `${listing.price}€`
-              : "Price not specified";
-            await sendNotification(
-              subscription,
-              `New apartment found: ${listing.title} - ${price}`,
-              "🏠 New Apartment Alert!"
-            );
+            totalNewListings++;
 
-            // Mark as notified
-            await db
-              .update(foundListings)
-              .set({ notified: true })
-              .where(eq(foundListings.ssUrl, listing.ssUrl));
+            // Send notification if user has push subscription
+            if (criteria.user.pushSubscription) {
+              const subscription = JSON.parse(
+                criteria.user.pushSubscription.subscription
+              ) as PushSubscription;
+
+              const price = listing.price
+                ? `${listing.price}€`
+                : "Cena nav norādīta";
+              await sendNotification(
+                subscription,
+                `Jauns sludinājums: ${listing.title} - ${price}`,
+                "🏠 Jauns Sludinājums!"
+              );
+
+              // Mark as notified
+              await prisma.foundListing.update({
+                where: { ssUrl: listing.ssUrl },
+                data: { notified: true },
+              });
+            }
+          } catch (error) {
+            // Skip duplicate listings
+            continue;
           }
-        } catch (error) {
-          // Skip duplicate listings
-          continue;
         }
+      } catch (error) {
+        console.error(
+          "Failed to scrape listings for criteria:",
+          criteria.id,
+          error
+        );
+        continue;
       }
 
       // Update last checked timestamp
-      await db
-        .update(searchCriteria)
-        .set({ lastChecked: new Date() })
-        .where(eq(searchCriteria.id, criteria.id));
+      await prisma.searchCriteria.update({
+        where: { id: criteria.id },
+        data: { lastChecked: new Date() },
+      });
     }
 
     return NextResponse.json({

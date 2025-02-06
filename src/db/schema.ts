@@ -1,5 +1,4 @@
 import { relations } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/neon-http";
 import {
   boolean,
   integer,
@@ -10,8 +9,17 @@ import {
   text,
   timestamp,
 } from "drizzle-orm/pg-core";
+import { drizzle } from "drizzle-orm/postgres-js";
+import type { AdapterAccountType } from "next-auth/adapters";
+import postgres from "postgres";
 
-export const db = drizzle(process.env.DATABASE_URL!);
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) {
+  throw new Error("DATABASE_URL is not set");
+}
+const pool = postgres(connectionString, { max: 1 });
+
+export const db = drizzle(pool);
 
 export const users = pgTable("user", {
   id: text("id")
@@ -21,6 +29,10 @@ export const users = pgTable("user", {
   email: text("email").unique(),
   emailVerified: timestamp("emailVerified", { mode: "date" }),
   image: text("image"),
+
+  stripePriceId: text("stripe_price_id"),
+  hasPaid: boolean("has_paid").default(false),
+  paidAt: timestamp("paid_at", { mode: "date" }),
 });
 
 export const accounts = pgTable(
@@ -29,7 +41,7 @@ export const accounts = pgTable(
     userId: text("userId")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    type: text("type").notNull(),
+    type: text("type").$type<AdapterAccountType>().notNull(),
     provider: text("provider").notNull(),
     providerAccountId: text("providerAccountId").notNull(),
     refresh_token: text("refresh_token"),
@@ -40,11 +52,13 @@ export const accounts = pgTable(
     id_token: text("id_token"),
     session_state: text("session_state"),
   },
-  (account) => ({
-    compoundKey: primaryKey({
-      columns: [account.provider, account.providerAccountId],
-    }),
-  })
+  (account) => [
+    {
+      compoundKey: primaryKey({
+        columns: [account.provider, account.providerAccountId],
+      }),
+    },
+  ]
 );
 
 export const sessions = pgTable("session", {
@@ -62,11 +76,13 @@ export const verificationTokens = pgTable(
     token: text("token").notNull(),
     expires: timestamp("expires", { mode: "date" }).notNull(),
   },
-  (verificationToken) => ({
-    compositePk: primaryKey({
-      columns: [verificationToken.identifier, verificationToken.token],
-    }),
-  })
+  (verificationToken) => [
+    {
+      compositePk: primaryKey({
+        columns: [verificationToken.identifier, verificationToken.token],
+      }),
+    },
+  ]
 );
 
 export const authenticators = pgTable(
@@ -83,11 +99,13 @@ export const authenticators = pgTable(
     credentialBackedUp: boolean("credentialBackedUp").notNull(),
     transports: text("transports"),
   },
-  (authenticator) => ({
-    compositePK: primaryKey({
-      columns: [authenticator.userId, authenticator.credentialID],
-    }),
-  })
+  (authenticator) => [
+    {
+      compositePK: primaryKey({
+        columns: [authenticator.userId, authenticator.credentialID],
+      }),
+    },
+  ]
 );
 
 export const searchCriteria = pgTable("search_criteria", {
@@ -95,7 +113,9 @@ export const searchCriteria = pgTable("search_criteria", {
   userId: text("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
-  district: text("district"), // Riga district/region
+  region: text("region").notNull(), // Rīga, Liepāja, or Ventspils
+  district: text("district"), // District/pagasts within the region
+  category: text("category").notNull(), // sell, buy, rent-in, rent-out
   minRooms: integer("min_rooms"),
   maxRooms: integer("max_rooms"),
   minPrice: numeric("min_price"),
@@ -119,6 +139,7 @@ export const foundListings = pgTable("found_listings", {
   area: numeric("area"),
   district: text("district"),
   description: text("description"),
+  imageUrl: text("image_url"), // Cover image URL
   foundAt: timestamp("found_at").defaultNow(),
   notified: boolean("notified").default(false),
 });

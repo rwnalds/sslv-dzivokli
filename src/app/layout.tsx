@@ -1,7 +1,9 @@
 import "./globals.css";
 
+import { GeistSans } from "geist/font/sans";
 import { Metadata } from "next";
 import { Outfit } from "next/font/google";
+import { Toaster } from "sonner";
 import { Footer } from "./_components/footer";
 import { Navbar } from "./_components/navbar";
 
@@ -9,36 +11,36 @@ const DMSans = Outfit({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: {
-    default: "PetLove - Smart Pet Appointment Management",
-    template: "%s | PetLove",
+    default: "SSpots - Atrodi Savu Sapņu Dzīvokli",
+    template: "%s | SSpots",
   },
   description:
-    "Seamlessly manage your pet appointments and sync directly with veterinarians. Smart notifications, multiple pet profiles, and hassle-free scheduling.",
+    "Saņem tūlītējus paziņojumus par jauniem dzīvokļu sludinājumiem SS.lv, kas atbilst taviem kritērijiem. Nekad vairs nepalaid garām savu sapņu dzīvokli.",
   keywords: [
-    "pet appointments",
-    "veterinary scheduling",
-    "pet care",
-    "vet notifications",
-    "pet health management",
+    "dzīvokļu meklēšana",
+    "ss.lv paziņojumi",
+    "dzīvokļi latvijā",
+    "nekustamais īpašums",
+    "dzīvokļu sludinājumi",
   ],
-  authors: [{ name: "PetLove" }],
-  creator: "PetLove",
-  publisher: "PetLove",
+  authors: [{ name: "SSpots" }],
+  creator: "SSpots",
+  publisher: "SSpots",
   robots: "index, follow",
   openGraph: {
     type: "website",
-    locale: "en_US",
-    url: "https://petlove-psi.vercel.app/",
-    siteName: "PetLove",
-    title: "PetLove - Smart Pet Appointment Management",
+    locale: "lv_LV",
+    url: "https://sspots.lv/",
+    siteName: "SSpots",
+    title: "SSpots - Atrodi Savu Sapņu Dzīvokli",
     description:
-      "Seamlessly manage your pet appointments and sync directly with veterinarians",
+      "Saņem tūlītējus paziņojumus par jauniem dzīvokļu sludinājumiem SS.lv",
     images: [
       {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "PetLove Preview",
+        alt: "SSpots Preview",
       },
     ],
   },
@@ -55,15 +57,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="lv" data-theme="light">
       <head>
-        <meta name="apple-mobile-web-app-title" content="PetLove" />
+        <meta name="apple-mobile-web-app-title" content="SSpots" />
       </head>
       <body
-        data-theme="bumblebee"
-        className={`${DMSans.className} min-h-screen`}
+        className={`${DMSans.className} min-h-screen ${GeistSans.className}`}
       >
-        <div className="grid grid-rows-[auto_1fr]">
+        <Toaster />
+        <div className="grid grid-rows-[auto_1fr] min-h-screen">
           <Navbar />
           {children}
         </div>

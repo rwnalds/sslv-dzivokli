@@ -6,17 +6,30 @@ export async function Navbar() {
   const session = await auth();
 
   return (
-    <div className="navbar max-w-6xl mx-auto px-5">
+    <div className="navbar max-w-6xl mx-auto px-4 sm:px-6">
       <div className="flex-1">
-        <Link href={"/"} className="btn btn-ghost text-xl">
-          <Image
-            src="/icons/logo.png"
-            alt="PetLove Logo"
-            sizes="50px"
-            width={30}
-            height={30}
-          />
-          PetLove
+        <Link href={"/"} className="btn btn-ghost text-xl gap-2">
+          <svg
+            width="30"
+            height="30"
+            viewBox="0 0 512 512"
+            className="text-primary"
+          >
+            <rect width="512" height="512" rx="64" fill="currentColor" />
+            <path d="M256 96L96 256H144V384H368V256H416L256 96Z" fill="white" />
+            <text
+              x="256"
+              y="320"
+              textAnchor="middle"
+              fontFamily="system-ui"
+              fontWeight="bold"
+              fontSize="120"
+              fill="white"
+            >
+              SS
+            </text>
+          </svg>
+          SSpots
         </Link>
       </div>
       <div className="flex-none gap-2">

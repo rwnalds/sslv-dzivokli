@@ -1,0 +1,129 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String          @id @default(cuid())
+  name          String?
+  email         String          @unique
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+  // Optional for WebAuthn support
+  Authenticator Authenticator[]
+
+  stripePriceId String?
+  hasPaid       Boolean   @default(false)
+  paidAt        DateTime?
+
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  searchCriteria   SearchCriteria[]
+  pushSubscription PushSubscription?
+}
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+}
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@id([identifier, token])
+}
+
+// Optional for WebAuthn support
+model Authenticator {
+  credentialID         String  @unique
+  userId               String
+  providerAccountId    String
+  credentialPublicKey  String
+  counter              Int
+  credentialDeviceType String
+  credentialBackedUp   Boolean
+  transports           String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, credentialID])
+}
+
+model SearchCriteria {
+  id          Int       @id @default(autoincrement())
+  userId      String    @map("user_id")
+  region      String
+  district    String?
+  category    String
+  minRooms    Int?      @map("min_rooms")
+  maxRooms    Int?      @map("max_rooms")
+  minPrice    Int?      @map("min_price")
+  maxPrice    Int?      @map("max_price")
+  minArea     Int?      @map("min_area")
+  maxArea     Int?      @map("max_area")
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  lastChecked DateTime? @map("last_checked")
+
+  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listings FoundListing[]
+}
+
+model FoundListing {
+  id          Int      @id @default(autoincrement())
+  criteriaId  Int      @map("criteria_id")
+  ssUrl       String   @unique @map("ss_url")
+  title       String
+  price       Int?
+  rooms       Int?
+  area        Int?
+  district    String?
+  description String?
+  imageUrl    String?  @map("image_url")
+  foundAt     DateTime @default(now()) @map("found_at")
+  notified    Boolean  @default(false)
+
+  criteria SearchCriteria @relation(fields: [criteriaId], references: [id], onDelete: Cascade)
+}
+
+model PushSubscription {
+  userId       String   @id @map("user_id")
+  subscription String
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

@@ -1,1 +1,0 @@
-ALTER TABLE "reminder" ADD COLUMN "notes" text;

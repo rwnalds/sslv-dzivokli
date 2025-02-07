@@ -103,7 +103,7 @@ export async function GET() {
   return Response.json(newListings);
 }
 
-export async function scrapeSSlv(criteria: SearchCriteria) {
+async function scrapeSSlv(criteria: SearchCriteria) {
   const browser = await chromium.launch({
     headless: false,
   });

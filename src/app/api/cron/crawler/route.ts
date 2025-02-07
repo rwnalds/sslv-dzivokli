@@ -5,8 +5,11 @@ import { categories } from "@/lib/ss/categories";
 import { regions } from "@/lib/ss/regions";
 import { prisma } from "@/utils/get-prisma";
 import { SearchCriteria } from "@prisma/client";
+import edgeChromium from "chrome-aws-lambda";
 
 export const dynamic = "force-dynamic";
+const LOCAL_CHROME_EXECUTABLE =
+  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 
 const ACTION_DELAY = 1000; // 1 second delay between actions
 
@@ -104,7 +107,10 @@ export async function GET() {
 }
 
 async function scrapeSSlv(criteria: SearchCriteria) {
+  const executablePath =
+    (await edgeChromium.executablePath) || LOCAL_CHROME_EXECUTABLE;
   const browser = await chromium.launch({
+    executablePath,
     headless: false,
   });
 

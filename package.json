@@ -34,7 +34,8 @@
     "react-dom": "^18.2.0",
     "sonner": "^1.7.4",
     "stripe": "^17.6.0",
-    "web-push": "^3.6.7"
+    "web-push": "^3.6.7",
+    "chrome-aws-lambda": "10.1.0"
   },
   "devDependencies": {
     "@types/web-push": "^3.6.4",

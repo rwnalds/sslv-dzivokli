@@ -3,10 +3,8 @@
 import { auth } from "@/auth";
 import { categories } from "@/lib/ss/categories";
 import { regions } from "@/lib/ss/regions";
-import { scrapeSSlv } from "@/lib/ss/scraper";
 import { prisma } from "@/utils/get-prisma";
 import { revalidatePath } from "next/cache";
-import { sendNotification } from "../../actions";
 
 export type SearchCriteriaResponse = {
   error?: string;
@@ -105,82 +103,9 @@ export async function toggleSearchCriteria(
   }
 }
 
-export const refreshListings = async () => {
-  const activeCriteria = await prisma.searchCriteria.findMany({
-    where: {
-      isActive: true,
-    },
-  });
-  const pushSubscription = await prisma.pushSubscription.findFirst({
-    where: {
-      userId: {
-        in: activeCriteria.map((criteria) => criteria.userId),
-      },
-    },
-  });
-
-  let totalNewListings = 0;
-
-  for (const criteria of activeCriteria) {
-    const listings = await scrapeSSlv(criteria);
-
-    for (const listing of listings) {
-      try {
-        // Skip listings without a valid ssUrl
-        if (!listing.ssUrl || !listing.title) {
-          console.warn("Skipping listing without ssUrl or title");
-          continue;
-        }
-
-        // Format listing data before insert
-        await prisma.foundListing.create({
-          data: {
-            criteriaId: criteria.id,
-            ssUrl: listing.ssUrl,
-            title: listing.title,
-            price: listing.price ? Number(listing.price) : null,
-            rooms: listing.rooms || null,
-            area: listing.area ? Number(listing.area) : null,
-            district: listing.district || null,
-            description: listing.description || null,
-            imageUrl: listing.imageUrl || null,
-            notified: false,
-          },
-        });
-
-        totalNewListings++;
-
-        // Send notification if user has push subscription
-        if (pushSubscription) {
-          const subscription = JSON.parse(
-            pushSubscription.subscription
-          ) as PushSubscription;
-
-          const price = listing.price
-            ? `${listing.price}€`
-            : "Price not specified";
-          await sendNotification(
-            subscription,
-            `Atrasts dzīvoklis ${listing.title} - ${price}EUR`,
-            "🏠 Jauns dzīvoklis!"
-          );
-
-          // Mark as notified
-          await prisma.foundListing.update({
-            where: { ssUrl: listing.ssUrl },
-            data: { notified: true },
-          });
-        }
-      } catch (error) {
-        // Skip duplicate listings
-        continue;
-      }
-    }
-
-    // Update last checked timestamp
-    await prisma.searchCriteria.update({
-      where: { id: criteria.id },
-      data: { lastChecked: new Date() },
-    });
-  }
-};
+export async function refreshListings() {
+  const listings = await fetch(process.env.BASE_URL + "/api/cron/crawler").then(
+    (res) => res.json()
+  );
+  return listings;
+}

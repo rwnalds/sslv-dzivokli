@@ -7,10 +7,9 @@ import { SearchForm } from "./search-form";
 
 import { prisma } from "@/utils/get-prisma";
 import { NotificationButton } from "../components/NotificationButton";
-import RefreshButton from "./refresh";
 
 export const metadata: Metadata = {
-  title: "Panelis - SS.lv Dzīvokļu Meklētājs",
+  title: "Meklēšana | SSpots",
   description:
     "Pārvaldi savus meklēšanas kritērijus un skati atrastos sludinājumus.",
 };
@@ -79,7 +78,7 @@ export default async function DashboardPage() {
           <div className="card-body p-3 sm:p-4">
             <div className="flex justify-between mb-3 sm:mb-4 items-center">
               <h2 className="card-title">Jaunākie Sludinājumi</h2>
-              <RefreshButton />
+              {/* <RefreshButton /> */}
             </div>
 
             <ListingsList

@@ -1,14 +1,6 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <!-- Background Circle -->
-    <circle cx="256" cy="256" r="256" fill="#0EA5E9" />
-
-    <!-- House Shape -->
-    <path d="M256 96L96 256H144V384H368V256H416L256 96Z" fill="white" />
-
-    <!-- SS Letters -->
-    <text x="256" y="320" text-anchor="middle" font-family="system-ui" font-weight="bold" font-size="120"
-        fill="#0EA5E9">
-        SS
-    </text>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:svgjs="http://svgjs.dev/svgjs" width="30" height="30"><svg width="30" height="30" viewBox="0 0 512 512" classname="text-primary">
+  <rect width="512" height="512" rx="64" fill="green"></rect>
+  <path d="M256 96L96 256H144V384H368V256H416L256 96Z" fill="white"></path>
+</svg><style>@media (prefers-color-scheme: light) { :root { filter: none; } }
+@media (prefers-color-scheme: dark) { :root { filter: none; } }
+</style></svg>

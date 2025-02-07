@@ -7,7 +7,7 @@ import { redirect } from "next/navigation";
 import IPhone from "./_components/iphone";
 
 export const metadata: Metadata = {
-  title: "Sākums - SS.lv Dzīvokļu Meklētājs",
+  title: "Sākums | SSpots",
   description:
     "Saņem tūlītējus paziņojumus par jauniem dzīvokļu sludinājumiem SS.lv, kas atbilst taviem kritērijiem. Nekad vairs nepalaid garām savu sapņu dzīvokli.",
 };

@@ -3,8 +3,14 @@ import { checkoutAction } from "@/lib/payments/actions";
 import { getStripePrices, getStripeProducts } from "@/lib/payments/stripe";
 import { getCurrentUser } from "@/lib/session";
 import { Bell, Check, Search } from "lucide-react";
+import { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { SubmitButton } from "./_components/submit-btn";
+
+export const metadata: Metadata = {
+  title: "Cenrādis | SSpots",
+  description: "Cena un funkcijas",
+};
 
 export default async function PricingPage() {
   const user = await getCurrentUser();

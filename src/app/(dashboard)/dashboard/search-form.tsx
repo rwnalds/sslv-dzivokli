@@ -132,7 +132,7 @@ export function SearchForm() {
             name="minPrice"
             className="input input-bordered w-full"
             min="0"
-            placeholder="Piem., 50000"
+            placeholder="Piem., 2000"
           />
         </div>
 
@@ -145,7 +145,7 @@ export function SearchForm() {
             name="maxPrice"
             className="input input-bordered w-full"
             min="0"
-            placeholder="Piem., 100000"
+            placeholder="Piem., 500"
           />
         </div>
       </div>

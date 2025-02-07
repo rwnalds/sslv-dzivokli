@@ -1,4 +1,5 @@
 import { Heart } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 
 export function Footer() {
@@ -22,29 +23,7 @@ export function Footer() {
         </nav>
         <div className="flex items-end justify-self-end flex-col">
           <div className="flex items-center gap-2">
-            <svg
-              width="40"
-              height="40"
-              viewBox="0 0 512 512"
-              className="text-primary"
-            >
-              <rect width="512" height="512" rx="64" fill="currentColor" />
-              <path
-                d="M256 96L96 256H144V384H368V256H416L256 96Z"
-                fill="white"
-              />
-              <text
-                x="256"
-                y="320"
-                textAnchor="middle"
-                fontFamily="system-ui"
-                fontWeight="bold"
-                fontSize="120"
-                fill="white"
-              >
-                SS
-              </text>
-            </svg>
+            <Image src="/icon.svg" alt="SSpots" width={32} height={32} />
             <h2 className="font-bold text-xl">SSpots</h2>
           </div>
           <p>Atrodi Savu Sapņu Dzīvokli</p>

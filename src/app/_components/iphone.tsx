@@ -93,7 +93,7 @@ export default function IPhone() {
       setTimeout(() => {
         setNotificationIndex(index);
         index = (index + 1) % NOTIFICATIONS.length;
-      }, 1000); // Reduced from 500ms to 200ms for quicker transitions
+      }, 500); // Reduced from 500ms to 200ms for quicker transitions
     };
 
     // Show first notification after a delay
@@ -103,7 +103,7 @@ export default function IPhone() {
     }, 500); // Reduced from 1000ms to 500ms for quicker initial start
 
     // Set up interval for subsequent notifications
-    const interval = setInterval(showNextNotification, 5000); // Reduced from 6000ms to 4000ms for faster cycling
+    const interval = setInterval(showNextNotification, 4000); // Reduced from 6000ms to 4000ms for faster cycling
 
     return () => {
       clearTimeout(initialTimer);

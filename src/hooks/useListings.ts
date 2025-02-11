@@ -1,5 +1,5 @@
 import { FoundListing } from "@prisma/client";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { refreshListings } from "../app/(dashboard)/dashboard/actions";
 
@@ -28,12 +28,6 @@ export function useListings(initialListings: FoundListing[]) {
       setIsRefreshing(false);
     }
   };
-
-  // Auto-refresh every 5 minutes
-  useEffect(() => {
-    const interval = setInterval(refresh, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, []);
 
   return {
     listings,

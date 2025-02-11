@@ -26,6 +26,7 @@ model User {
   updatedAt        DateTime          @updatedAt
   searchCriteria   SearchCriteria[]
   pushSubscription PushSubscription?
+  favorites        FavoriteListing[]
 }
 
 model Account {
@@ -116,8 +117,24 @@ model FoundListing {
   imageUrl    String?  @map("image_url")
   foundAt     DateTime @default(now()) @map("found_at")
   notified    Boolean  @default(false)
+  isFavorite  Boolean  @default(false) @map("is_favorite")
 
-  criteria SearchCriteria @relation(fields: [criteriaId], references: [id], onDelete: Cascade)
+  criteria  SearchCriteria    @relation(fields: [criteriaId], references: [id], onDelete: Cascade)
+  favorites FavoriteListing[]
+}
+
+model FavoriteListing {
+  id        Int      @id @default(autoincrement())
+  userId    String   @map("user_id")
+  listingId Int      @map("listing_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing FoundListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, listingId])
+  @@index([userId])
+  @@index([listingId])
 }
 
 model PushSubscription {

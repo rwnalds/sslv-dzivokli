@@ -1,9 +1,13 @@
 "use client";
 
 import { FoundListing, SearchCriteria } from "@prisma/client";
-import { ExternalLink, Loader2 } from "lucide-react";
+import { ExternalLink, Heart, Loader2 } from "lucide-react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { toast } from "sonner";
 import { useListings } from "../../../hooks/useListings";
+import { toggleFavorite } from "./actions";
 
 interface ListingsListProps {
   listings: FoundListing[];
@@ -14,7 +18,53 @@ export function ListingsList({
   listings: initialListings,
   searchCriteria,
 }: ListingsListProps) {
-  const { listings, isRefreshing } = useListings(initialListings);
+  const router = useRouter();
+  const { listings: baseListings, isRefreshing } = useListings(initialListings);
+  const [optimisticFavorites, setOptimisticFavorites] = useState<Set<number>>(
+    () => new Set(initialListings.filter((l) => l.isFavorite).map((l) => l.id))
+  );
+
+  // Merge base listings with optimistic favorites
+  const listings = baseListings.map((listing) => ({
+    ...listing,
+    isFavorite: optimisticFavorites.has(listing.id),
+  }));
+
+  async function handleFavoriteClick(listingId: number) {
+    // Optimistically update the UI
+    setOptimisticFavorites((prev) => {
+      const next = new Set(prev);
+      if (next.has(listingId)) {
+        next.delete(listingId);
+      } else {
+        next.add(listingId);
+      }
+      return next;
+    });
+
+    const promise = toggleFavorite(listingId);
+
+    toast.promise(promise, {
+      loading: "Mainām favorītu statusu...",
+      success: (data) => {
+        router.refresh();
+        return data.message || "Favorītu status mainīts!";
+      },
+      error: (err) => {
+        // Revert optimistic update on error
+        setOptimisticFavorites((prev) => {
+          const next = new Set(prev);
+          if (next.has(listingId)) {
+            next.delete(listingId);
+          } else {
+            next.add(listingId);
+          }
+          return next;
+        });
+        return err.error || "Neizdevās mainīt favorītu statusu";
+      },
+    });
+  }
 
   function getSearchCriteriaName(criteriaId: number) {
     const criteria = searchCriteria.find((c) => c.id === criteriaId);
@@ -92,6 +142,18 @@ export function ListingsList({
                   </div>
                 </div>
                 <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-start w-full sm:w-auto gap-2 mt-3 sm:mt-0">
+                  <button
+                    onClick={() => handleFavoriteClick(listing.id)}
+                    className={`btn btn-sm ${
+                      listing.isFavorite ? "btn-primary" : "btn-ghost"
+                    }`}
+                  >
+                    <Heart
+                      className={`w-4 h-4 ${
+                        listing.isFavorite ? "fill-current" : ""
+                      }`}
+                    />
+                  </button>
                   <a
                     href={listing.ssUrl}
                     target="_blank"

@@ -12,6 +12,8 @@ export const metadata: Metadata = {
     "Saņem tūlītējus paziņojumus par jauniem dzīvokļu sludinājumiem SS.lv, kas atbilst taviem kritērijiem. Nekad vairs nepalaid garām savu sapņu dzīvokli.",
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function Page() {
   const session = await auth();
 
@@ -60,7 +62,6 @@ export default async function Page() {
         <div className="flex flex-col items-center min-h-[60vh] lg:min-h-max justify-center text-center mb-24">
           <h1 className="text-3xl lg:text-5xl font-extrabold text-base-content">
             Atrodi Savu <span className="text-primary">Sapņu Dzīvokli</span>{" "}
-            <span className="text-primary">Latvijā</span>
           </h1>
           <p className="py-6 lg:text-xl mb-6 text-base-content/80">
             Saņem tūlītējus paziņojumus par jauniem sludinājumiem SS.lv.{" "}
@@ -87,6 +88,7 @@ export default async function Page() {
           ))}
         </div>
       </div>
+
       {/* Demo Section */}
       <div className="max-w-6xl mx-auto flex justify-center mb-12">
         <IPhone />
@@ -131,6 +133,81 @@ export default async function Page() {
           <Link href="/pricing" className="btn btn-primary btn-lg">
             Sākt Meklēšanu
           </Link>
+        </div>
+      </div>
+
+      {/* PWA Section */}
+      <div className="max-w-6xl mx-auto text-center mb-24 px-4">
+        <div className="space-y-4 max-w-xl mx-auto mb-6">
+          <h2 className="font-bold text-2xl justify-center mb-4">
+            Lejuplādē Aplikāciju 📱
+          </h2>
+          <p className="text-base-content/70 mb-6">
+            SSpots var instalēt kā aplikāciju uz sava tālruņa. <u>Ieteicams</u>,
+            jo tādējādi varēsi saņemt paziņojumus par jauniem sludinājumiem, kas
+            ir šīs aplikācijas galvenā fīča.
+          </p>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-8 mb-12">
+          {/* Android Instructions */}
+          <div className="space-y-4 card bg-base-100 shadow-lg">
+            <div className="card-body">
+              <h3 className="card-title font-medium text-lg">
+                Android Lietotājiem
+              </h3>
+              <ol className="text-left space-y-2 text-base-content/70">
+                <li className="flex items-start gap-2">
+                  <span className="font-bold min-w-[24px]">1.</span>
+                  <span>Atver Chrome pārlūku</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="font-bold min-w-[24px]">2.</span>
+                  <span>Nospied uz trīs punktiem augšējā labajā stūrī</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="font-bold min-w-[24px]">3.</span>
+                  <span>Izvēlies &quot;Pievienot sākuma ekrānam&quot;</span>
+                </li>
+              </ol>
+            </div>
+          </div>
+
+          {/* iOS Instructions */}
+          <div className="space-y-4 card bg-base-100 shadow-lg">
+            <div className="card-body">
+              <h3 className="card-title font-medium text-lg">
+                iPhone Lietotājiem
+              </h3>
+              <ol className="text-left space-y-2 text-base-content/70">
+                <li className="flex items-start gap-2">
+                  <span className="font-bold min-w-[24px]">1.</span>
+                  <span>Atver Safari pārlūku</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="font-bold min-w-[24px]">2.</span>
+                  <span>
+                    Nospied uz &quot;Kopīgot&quot; pogas (kvadrāts ar bultiņu)
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="font-bold min-w-[24px]">3.</span>
+                  <span>Izvēlies &quot;Pievienot sākuma ekrānam&quot;</span>
+                </li>
+              </ol>
+            </div>
+          </div>
+        </div>
+        <div className="max-w-xl mx-auto text-center mb-24">
+          <h2 className="card-title text-2xl justify-center mb-4">
+            Kā tas strādā?
+          </h2>
+          <p className="text-base-content/70 mb-6">
+            Šī lapa darbojas kā mobilā aplikācija, kad atrodas uz tava telefona.
+            Tā aizņem daudz mazāk atmiņas nekā parasta mobilā aplikācija, bet
+            var sūtīt paziņojumus par jauniem sludinājumiem. Es to dēvēju par
+            nākotnes tehnoloģiju 😎
+          </p>
         </div>
       </div>
 
@@ -180,7 +257,7 @@ export default async function Page() {
               rīku uztaisīju, lai nevajadzētu tā vairs darīt. Ir pagājušas{" "}
               <span className="font-bold text-primary">
                 {Math.floor(
-                  (new Date().getTime() - new Date("2025-02-05").getTime()) /
+                  (new Date().getTime() - new Date("2025-02-11").getTime()) /
                     (1000 * 60 * 60 * 24)
                 )}{" "}
                 dienas

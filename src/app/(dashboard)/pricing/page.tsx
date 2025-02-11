@@ -12,6 +12,8 @@ export const metadata: Metadata = {
   description: "Cena un funkcijas",
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function PricingPage() {
   const user = await getCurrentUser();
 

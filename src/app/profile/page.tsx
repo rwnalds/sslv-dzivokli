@@ -6,8 +6,8 @@ export const metadata: Metadata = {
     "Manage your pet profiles, notification preferences, and veterinary connections.",
 };
 
-// Rest of your profile component...
+export const dynamic = "force-dynamic";
 
-export default function Profile() {
+export default async function ProfilePage() {
   return <div>page</div>;
 }

@@ -10,7 +10,6 @@ import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-console.log("Starting crawler...");
 const ACTION_DELAY = 1000; // 1 second delay between actions
 
 type ScrapedListing = {
@@ -32,7 +31,7 @@ const browser = await puppeteer.launch({
   executablePath:
     process.env.CHROME_EXECUTABLE_PATH ||
     (await chromium.executablePath(
-      "https://storage.googleapis.com/sslv-chromium/Chromium%20v132.0.0%20pack.tar"
+      "https://storage.googleapis.com/sslv-chromium/Chromium%20v126.0.0%20Pack.tar"
     )),
   headless: true, // Always run headless in production
 });

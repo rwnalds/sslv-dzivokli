@@ -1,8 +1,10 @@
 {
-  "crons": [
-    {
-      "path": "/api/cron/crawler",
-      "schedule": "0 12 * * *"
-    }
-  ]
+  "buildCommand": "chmod +x .vercel/build.sh && ./.vercel/build.sh && pnpm build",
+  "installCommand": "pnpm install",
+  "framework": "nextjs",
+  "regions": ["fra1"],
+  "crons": {
+    "crawler": "*/5 * * * *",
+    "cleanup": "0 */6 * * *"
+  }
 }

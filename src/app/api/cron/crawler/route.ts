@@ -57,7 +57,9 @@ export async function GET() {
       },
     });
 
-    let newListings = [];
+    type NewListing = Awaited<ReturnType<typeof prisma.foundListing.create>>;
+    let newListings: NewListing[] = [];
+    let listingsByCriteria = new Map<number, NewListing[]>();
 
     for (const criteria of activeCriteria) {
       const listings = await scrapeSSlv(browser, criteria);
@@ -88,27 +90,10 @@ export async function GET() {
 
           newListings.push(newListing);
 
-          // Send notification if user has push subscription
-          if (pushSubscription) {
-            const subscription = JSON.parse(
-              pushSubscription.subscription
-            ) as PushSubscription;
-
-            const price = listing.price
-              ? `${listing.price}€`
-              : "Price not specified";
-            await sendNotification(
-              subscription,
-              `Atrasts dzīvoklis ${listing.title} - ${price}EUR`,
-              "🏠 Jauns dzīvoklis!"
-            );
-
-            // Mark as notified
-            await prisma.foundListing.update({
-              where: { ssUrl: listing.ssUrl },
-              data: { notified: true },
-            });
-          }
+          // Group listings by criteria
+          const criteriaListings = listingsByCriteria.get(criteria.id) || [];
+          criteriaListings.push(newListing);
+          listingsByCriteria.set(criteria.id, criteriaListings);
         } catch (error) {
           // Skip duplicate listings
           continue;
@@ -119,6 +104,47 @@ export async function GET() {
       await prisma.searchCriteria.update({
         where: { id: criteria.id },
         data: { lastChecked: new Date() },
+      });
+    }
+
+    // Send aggregated notifications if there are new listings
+    if (pushSubscription && newListings.length > 0) {
+      const subscription = JSON.parse(
+        pushSubscription.subscription
+      ) as PushSubscription;
+
+      // Send one notification per criteria that has new listings
+      for (const [criteriaId, listings] of listingsByCriteria.entries()) {
+        const criteria = activeCriteria.find((c) => c.id === criteriaId);
+        if (!criteria || listings.length === 0) continue;
+
+        const location = criteria.district
+          ? `${criteria.region}, ${criteria.district}`
+          : criteria.region;
+
+        const priceRange = listings
+          .map((l) => l.price)
+          .filter(Boolean)
+          .sort((a, b) => (a || 0) - (b || 0));
+
+        let message = `Atrasti ${listings.length} jauni sludinājumi rajonā ${location}`;
+        if (priceRange.length > 0) {
+          message += ` (${priceRange[0]}€ - ${
+            priceRange[priceRange.length - 1]
+          }€)`;
+        }
+
+        await sendNotification(subscription, message, "🏠 Jauni Sludinājumi!");
+      }
+
+      // Mark all as notified in one query
+      await prisma.foundListing.updateMany({
+        where: {
+          id: {
+            in: newListings.map((l) => l.id),
+          },
+        },
+        data: { notified: true },
       });
     }
 

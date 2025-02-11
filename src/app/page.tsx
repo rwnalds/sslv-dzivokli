@@ -12,6 +12,8 @@ export const metadata: Metadata = {
     "Saņem tūlītējus paziņojumus par jauniem dzīvokļu sludinājumiem SS.lv, kas atbilst taviem kritērijiem. Nekad vairs nepalaid garām savu sapņu dzīvokli.",
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function Page() {
   const session = await auth();
 

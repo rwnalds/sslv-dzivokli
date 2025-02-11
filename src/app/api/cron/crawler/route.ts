@@ -1,5 +1,5 @@
 import chromium from "@sparticuz/chromium-min";
-import puppeteer from "puppeteer-core";
+import puppeteer, { Browser } from "puppeteer-core";
 
 import { sendNotification } from "@/app/actions";
 import { categories } from "@/lib/ss/categories";
@@ -9,6 +9,8 @@ import { SearchCriteria } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
+
+export const maxDuration = 30;
 
 const ACTION_DELAY = 1000; // 1 second delay between actions
 
@@ -23,21 +25,25 @@ type ScrapedListing = {
   description: string | null;
 };
 
-const isLocal = !!process.env.CHROME_EXECUTABLE_PATH;
+async function getBrowser() {
+  const isLocal = !!process.env.CHROME_EXECUTABLE_PATH;
 
-const browser = await puppeteer.launch({
-  args: isLocal ? puppeteer.defaultArgs() : chromium.args,
-  defaultViewport: chromium.defaultViewport,
-  executablePath:
-    process.env.CHROME_EXECUTABLE_PATH ||
-    (await chromium.executablePath(
-      "https://storage.googleapis.com/sslv-chromium/Chromium%20v126.0.0%20Pack.tar"
-    )),
-  headless: true, // Always run headless in production
-});
+  return puppeteer.launch({
+    args: isLocal ? puppeteer.defaultArgs() : chromium.args,
+    defaultViewport: chromium.defaultViewport,
+    executablePath:
+      process.env.CHROME_EXECUTABLE_PATH ||
+      (await chromium.executablePath(
+        "https://storage.googleapis.com/sslv-chromium/Chromium%20v126.0.0%20Pack.tar"
+      )),
+    headless: true,
+  });
+}
 
 export async function GET() {
+  let browser;
   try {
+    browser = await getBrowser();
     const activeCriteria = await prisma.searchCriteria.findMany({
       where: {
         isActive: true,
@@ -54,7 +60,7 @@ export async function GET() {
     let newListings = [];
 
     for (const criteria of activeCriteria) {
-      const listings = await scrapeSSlv(criteria);
+      const listings = await scrapeSSlv(browser, criteria);
 
       for (const listing of listings) {
         try {
@@ -116,7 +122,7 @@ export async function GET() {
       });
     }
 
-    return Response.json({
+    return NextResponse.json({
       success: true,
       data: newListings,
       count: newListings.length,
@@ -132,10 +138,17 @@ export async function GET() {
       },
       { status: 500 }
     );
+  } finally {
+    if (browser) {
+      await browser.close();
+    }
   }
 }
 
-async function scrapeSSlv(criteria: SearchCriteria): Promise<ScrapedListing[]> {
+async function scrapeSSlv(
+  browser: Browser,
+  criteria: SearchCriteria
+): Promise<ScrapedListing[]> {
   const page = await browser.newPage();
 
   try {
@@ -179,7 +192,7 @@ async function scrapeSSlv(criteria: SearchCriteria): Promise<ScrapedListing[]> {
     async function fillField(selector: string, value: string | number) {
       try {
         await page.waitForSelector(selector, { visible: true });
-        await page.evaluate((sel) => {
+        await page.evaluate((sel: string) => {
           const element = document.querySelector(sel);
           if (element) {
             element.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -192,7 +205,7 @@ async function scrapeSSlv(criteria: SearchCriteria): Promise<ScrapedListing[]> {
         if (isSelect) {
           // For select elements, first verify the option exists
           const optionExists = await page.evaluate(
-            ({ sel, val }) => {
+            ({ sel, val }: { sel: string; val: string }) => {
               const select = document.querySelector(sel) as HTMLSelectElement;
               if (!select) return false;
               return Array.from(select.options).some(
@@ -219,7 +232,7 @@ async function scrapeSSlv(criteria: SearchCriteria): Promise<ScrapedListing[]> {
         // Verify the value was set correctly
         try {
           if (isSelect) {
-            const selectedValue = await page.evaluate((sel) => {
+            const selectedValue = await page.evaluate((sel: string) => {
               const select = document.querySelector(sel) as HTMLSelectElement;
               if (!select) return null;
               const selected = select.selectedOptions[0];

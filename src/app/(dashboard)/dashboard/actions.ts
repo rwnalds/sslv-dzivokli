@@ -113,3 +113,75 @@ export async function refreshListings() {
 
   return data;
 }
+
+export async function toggleFavorite(
+  listingId: number
+): Promise<SearchCriteriaResponse> {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "Nav piekļuves tiesību" };
+
+  try {
+    // Check if the listing is already favorited
+    const existingFavorite = await prisma.favoriteListing.findUnique({
+      where: {
+        userId_listingId: {
+          userId: session.user.id,
+          listingId,
+        },
+      },
+    });
+
+    if (existingFavorite) {
+      // Remove from favorites
+      await prisma.favoriteListing.delete({
+        where: {
+          id: existingFavorite.id,
+        },
+      });
+
+      // Update isFavorite flag if no other users have favorited this listing
+      const otherFavorites = await prisma.favoriteListing.findFirst({
+        where: {
+          listingId,
+          NOT: {
+            userId: session.user.id,
+          },
+        },
+      });
+
+      if (!otherFavorites) {
+        await prisma.foundListing.update({
+          where: { id: listingId },
+          data: { isFavorite: false },
+        });
+      }
+
+      return {
+        success: true,
+        message: "Sludinājums izņemts no favorītiem",
+      };
+    } else {
+      // Add to favorites
+      await prisma.favoriteListing.create({
+        data: {
+          userId: session.user.id,
+          listingId,
+        },
+      });
+
+      // Update isFavorite flag
+      await prisma.foundListing.update({
+        where: { id: listingId },
+        data: { isFavorite: true },
+      });
+
+      return {
+        success: true,
+        message: "Sludinājums pievienots favorītiem",
+      };
+    }
+  } catch (error) {
+    console.error("Failed to toggle favorite:", error);
+    return { error: "Neizdevās mainīt favorītu statusu" };
+  }
+}

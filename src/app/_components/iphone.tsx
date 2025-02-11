@@ -5,15 +5,15 @@ import { useEffect, useState } from "react";
 
 const NOTIFICATIONS = [
   {
-    title: "SSpot - Jauns dzīvoklis!",
+    title: "SSpots - Jauns dzīvoklis!",
     message: "3-ist. dzīvoklis Purvciemā, 85m², 129000€",
   },
   {
-    title: "SSpot - Jauns dzīvoklis!",
+    title: "SSpots - Jauns dzīvoklis!",
     message: "2-ist. dzīvoklis Centrā, 55m², 95000€",
   },
   {
-    title: "SSpot - Jauns dzīvoklis!",
+    title: "SSpots - Jauns dzīvoklis!",
     message: "4-ist. dzīvoklis Imantā, 95m², 145000€",
   },
 ];

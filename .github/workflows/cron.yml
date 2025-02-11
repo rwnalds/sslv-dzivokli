@@ -1,0 +1,40 @@
+name: Scheduled Tasks
+
+on:
+  schedule:
+    # Crawler job - every 5 minutes
+    - cron: "*/5 * * * *"
+    # Cleanup job - every 6 hours
+    - cron: "0 */6 * * *"
+
+  # Optional: Allow manual triggering of the workflow
+  workflow_dispatch:
+
+jobs:
+  crawler:
+    name: Crawl SS.lv
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '*/5 * * * *'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Send crawler request
+        run: |
+          curl -X GET \
+            ${{ secrets.API_BASE_URL }}/api/cron/crawler
+
+  cleanup:
+    name: Clean old listings
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '0 */6 * * *'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Send cleanup request
+        run: |
+          curl -X GET \
+            ${{ secrets.API_BASE_URL }}/api/cron/cleanup

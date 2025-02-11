@@ -104,8 +104,12 @@ export async function toggleSearchCriteria(
 }
 
 export async function refreshListings() {
-  const listings = await fetch(process.env.BASE_URL + "/api/cron/crawler").then(
-    (res) => res.json()
-  );
-  return listings;
+  const response = await fetch(process.env.BASE_URL + "/api/cron/crawler");
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to refresh listings");
+  }
+
+  return data;
 }

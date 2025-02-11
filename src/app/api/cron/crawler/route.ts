@@ -1,15 +1,16 @@
-import { chromium, Page } from "playwright";
+import chromium from "@sparticuz/chromium-min";
+import puppeteer from "puppeteer-core";
 
 import { sendNotification } from "@/app/actions";
 import { categories } from "@/lib/ss/categories";
 import { regions } from "@/lib/ss/regions";
 import { prisma } from "@/utils/get-prisma";
 import { SearchCriteria } from "@prisma/client";
+import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
-const LOCAL_CHROME_EXECUTABLE =
-  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 
+console.log("Starting crawler...");
 const ACTION_DELAY = 1000; // 1 second delay between actions
 
 type ScrapedListing = {
@@ -23,104 +24,126 @@ type ScrapedListing = {
   description: string | null;
 };
 
+const isLocal = !!process.env.CHROME_EXECUTABLE_PATH;
+
+const browser = await puppeteer.launch({
+  args: isLocal ? puppeteer.defaultArgs() : chromium.args,
+  defaultViewport: chromium.defaultViewport,
+  executablePath:
+    process.env.CHROME_EXECUTABLE_PATH ||
+    (await chromium.executablePath(
+      "https://storage.googleapis.com/sslv-chromium/Chromium%20v132.0.0%20pack.tar"
+    )),
+  headless: true, // Always run headless in production
+});
+
 export async function GET() {
-  const activeCriteria = await prisma.searchCriteria.findMany({
-    where: {
-      isActive: true,
-    },
-  });
-  const pushSubscription = await prisma.pushSubscription.findFirst({
-    where: {
-      userId: {
-        in: activeCriteria.map((criteria) => criteria.userId),
+  try {
+    const activeCriteria = await prisma.searchCriteria.findMany({
+      where: {
+        isActive: true,
       },
-    },
-  });
+    });
+    const pushSubscription = await prisma.pushSubscription.findFirst({
+      where: {
+        userId: {
+          in: activeCriteria.map((criteria) => criteria.userId),
+        },
+      },
+    });
 
-  let newListings = [];
+    let newListings = [];
 
-  for (const criteria of activeCriteria) {
-    const listings = await scrapeSSlv(criteria);
+    for (const criteria of activeCriteria) {
+      const listings = await scrapeSSlv(criteria);
 
-    for (const listing of listings) {
-      try {
-        // Skip listings without a valid ssUrl
-        if (!listing.ssUrl || !listing.title) {
-          console.warn("Skipping listing without ssUrl or title");
+      for (const listing of listings) {
+        try {
+          // Skip listings without a valid ssUrl
+          if (!listing.ssUrl || !listing.title) {
+            console.warn("Skipping listing without ssUrl or title");
+            continue;
+          }
+
+          // Format listing data before insert
+          const newListing = await prisma.foundListing.create({
+            data: {
+              criteriaId: criteria.id,
+              ssUrl: listing.ssUrl,
+              title: listing.title,
+              price: listing.price ? Number(listing.price) : null,
+              rooms: listing.rooms || null,
+              area: listing.area ? Number(listing.area) : null,
+              district: listing.district || null,
+              description: listing.description || null,
+              imageUrl: listing.imageUrl || null,
+              notified: false,
+            },
+          });
+
+          newListings.push(newListing);
+
+          // Send notification if user has push subscription
+          if (pushSubscription) {
+            const subscription = JSON.parse(
+              pushSubscription.subscription
+            ) as PushSubscription;
+
+            const price = listing.price
+              ? `${listing.price}€`
+              : "Price not specified";
+            await sendNotification(
+              subscription,
+              `Atrasts dzīvoklis ${listing.title} - ${price}EUR`,
+              "🏠 Jauns dzīvoklis!"
+            );
+
+            // Mark as notified
+            await prisma.foundListing.update({
+              where: { ssUrl: listing.ssUrl },
+              data: { notified: true },
+            });
+          }
+        } catch (error) {
+          // Skip duplicate listings
           continue;
         }
-
-        // Format listing data before insert
-        await prisma.foundListing.create({
-          data: {
-            criteriaId: criteria.id,
-            ssUrl: listing.ssUrl,
-            title: listing.title,
-            price: listing.price ? Number(listing.price) : null,
-            rooms: listing.rooms || null,
-            area: listing.area ? Number(listing.area) : null,
-            district: listing.district || null,
-            description: listing.description || null,
-            imageUrl: listing.imageUrl || null,
-            notified: false,
-          },
-        });
-
-        newListings.push(listing);
-
-        // Send notification if user has push subscription
-        if (pushSubscription) {
-          const subscription = JSON.parse(
-            pushSubscription.subscription
-          ) as PushSubscription;
-
-          const price = listing.price
-            ? `${listing.price}€`
-            : "Price not specified";
-          await sendNotification(
-            subscription,
-            `Atrasts dzīvoklis ${listing.title} - ${price}EUR`,
-            "🏠 Jauns dzīvoklis!"
-          );
-
-          // Mark as notified
-          await prisma.foundListing.update({
-            where: { ssUrl: listing.ssUrl },
-            data: { notified: true },
-          });
-        }
-      } catch (error) {
-        // Skip duplicate listings
-        continue;
       }
+
+      // Update last checked timestamp
+      await prisma.searchCriteria.update({
+        where: { id: criteria.id },
+        data: { lastChecked: new Date() },
+      });
     }
 
-    // Update last checked timestamp
-    await prisma.searchCriteria.update({
-      where: { id: criteria.id },
-      data: { lastChecked: new Date() },
+    return Response.json({
+      success: true,
+      data: newListings,
+      count: newListings.length,
+      message: `Found ${newListings.length} new listings`,
     });
+  } catch (error) {
+    console.error("Error in crawler:", error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+        message: "Failed to fetch listings",
+      },
+      { status: 500 }
+    );
   }
-
-  return Response.json(newListings);
 }
 
-async function scrapeSSlv(criteria: SearchCriteria) {
-  const browser = await chromium.launch({
-    executablePath: LOCAL_CHROME_EXECUTABLE,
-    headless: false,
-  });
-
-  console.log("Scraping SSLV for criteria:", criteria);
-  let page: Page | null = null;
+async function scrapeSSlv(criteria: SearchCriteria): Promise<ScrapedListing[]> {
+  const page = await browser.newPage();
 
   try {
-    const context = await browser.newContext({
-      userAgent:
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    });
-    page = await context.newPage();
-    page.setDefaultTimeout(30000);
+    await page.setUserAgent(
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    );
+    await page.setDefaultNavigationTimeout(30000);
 
     // Find the region and category configuration
     const region = regions.find((r) => r.name === criteria.region);
@@ -141,35 +164,29 @@ async function scrapeSSlv(criteria: SearchCriteria) {
 
     console.log("Navigating to URL:", url);
 
-    // Enhanced page loading wait conditions
-    await page.goto(url);
-    await Promise.all([
-      page.waitForLoadState("domcontentloaded"),
-      page.waitForLoadState("networkidle"),
-    ]);
+    // Navigate to page and wait for content
+    await page.goto(url, { waitUntil: "networkidle0" });
 
     // Wait for the filter table to be present
     await page
-      .waitForSelector("#filter_tbl", { state: "visible", timeout: 10000 })
+      .waitForSelector("#filter_tbl", { visible: true, timeout: 10000 })
       .catch(() =>
         console.log("Filter table not immediately visible, proceeding anyway")
       );
 
     // Wait for initial render
-    await page.waitForTimeout(ACTION_DELAY * 2);
+    await new Promise((resolve) => setTimeout(resolve, ACTION_DELAY * 2));
 
     async function fillField(selector: string, value: string | number) {
-      if (!page) return;
-
       try {
-        await page.waitForSelector(selector, { state: "visible" });
+        await page.waitForSelector(selector, { visible: true });
         await page.evaluate((sel) => {
           const element = document.querySelector(sel);
           if (element) {
             element.scrollIntoView({ behavior: "smooth", block: "center" });
           }
         }, selector);
-        await page.waitForTimeout(500);
+        await new Promise((resolve) => setTimeout(resolve, 500));
 
         const isSelect = selector.includes("select");
 
@@ -193,15 +210,14 @@ async function scrapeSSlv(criteria: SearchCriteria) {
             return;
           }
 
-          await page.selectOption(selector, value.toString());
+          await page.select(selector, value.toString());
         } else {
-          await page.fill(selector, value.toString());
+          await page.type(selector, value.toString());
         }
 
-        // Wait a bit after filling
-        await page.waitForTimeout(500);
+        await new Promise((resolve) => setTimeout(resolve, 500));
 
-        // Only verify if the page hasn't navigated
+        // Verify the value was set correctly
         try {
           if (isSelect) {
             const selectedValue = await page.evaluate((sel) => {
@@ -216,35 +232,33 @@ async function scrapeSSlv(criteria: SearchCriteria) {
                 `Select ${selector} value mismatch. Expected: ${value}, Got: ${selectedValue}`
               );
               // Retry once
-              await page.waitForTimeout(500);
-              await page.selectOption(selector, value.toString());
+              await new Promise((resolve) => setTimeout(resolve, 500));
+              await page.select(selector, value.toString());
             }
           } else {
-            const fieldValue = await page.$eval(
-              selector,
-              (el: HTMLInputElement) => el.value
-            );
+            const fieldValue = await page.evaluate((sel: string) => {
+              const input = document.querySelector(sel) as HTMLInputElement;
+              return input ? input.value : null;
+            }, selector);
 
             if (fieldValue !== value.toString()) {
               console.warn(
                 `Field ${selector} value mismatch. Expected: ${value}, Got: ${fieldValue}`
               );
               // Retry once
-              await page.waitForTimeout(500);
-              await page.fill(selector, value.toString());
+              await new Promise((resolve) => setTimeout(resolve, 500));
+              await page.type(selector, value.toString(), { delay: 100 });
             }
           }
         } catch (verifyError) {
-          // If verification fails (e.g., due to navigation), just log it and continue
           console.log(`Could not verify field ${selector}, continuing anyway`);
         }
       } catch (error) {
         console.warn(`Failed to fill field ${selector}:`, error);
-        // Don't throw, just continue with other fields
       }
     }
 
-    // Fill filters with verification
+    // Fill filters
     console.log("Filling in filters...");
 
     if (criteria.minPrice) {
@@ -278,124 +292,117 @@ async function scrapeSSlv(criteria: SearchCriteria) {
       );
     }
 
-    // Click search with enhanced wait conditions
+    // Click search button and wait for results
     console.log("Clicking search button...");
     const searchButton = await page.waitForSelector(
       'input[type="submit"][value="Meklēt"]'
     );
 
-    // Start waiting for the response before clicking
-    const responsePromise = page.waitForResponse(
-      (response) =>
-        response.url().includes("ss.lv") && response.status() === 200
-    );
+    if (!searchButton) {
+      throw new Error("Search button not found");
+    }
 
-    // Click the search button
-    await searchButton.click();
-
-    // Wait for the response and the page to be ready
-    await responsePromise;
-    await page.waitForLoadState("domcontentloaded");
-    await page.waitForLoadState("networkidle");
+    // Click and wait for navigation
+    await Promise.all([
+      page.waitForNavigation({ waitUntil: "networkidle0" }),
+      searchButton.click(),
+    ]);
 
     // Make sure the results are loaded
     await page.waitForSelector("tr[id^='tr_']");
 
     console.log("Extracting listings...");
     // Extract listings
-    const listings = await page.$$eval("tr[id^='tr_']", (rows) => {
-      return rows
-        .map((row): ScrapedListing | null => {
-          // Skip banner rows
-          if (row.id.includes("bnr_")) return null;
+    const listings = await page.evaluate(() => {
+      const rows = document.querySelectorAll("tr[id^='tr_']");
+      const results: ScrapedListing[] = [];
 
-          const titleEl = row.querySelector("td.msg2 div.d1 a.am");
-          const priceEl = row.querySelector(
-            "td.msga2-o.pp6:last-child a.amopt"
-          ); // Last column contains the price
-          const roomsEl = row.querySelector(
-            "td.msga2-o.pp6:nth-child(5) a.amopt"
-          ); // 5th column contains rooms
-          const areaEl = row.querySelector(
-            "td.msga2-o.pp6:nth-child(6) a.amopt"
-          ); // 6th column contains area
-          const locationEl = row.querySelector(
-            "td.msga2-o.pp6:nth-child(4) a.amopt"
-          ); // 4th column contains location
-          const imageEl = row.querySelector("td.msga2:nth-child(2) img");
+      rows.forEach((row) => {
+        // Skip banner rows
+        if (row.id.includes("bnr_")) return;
 
-          // Skip if we don't have required fields
-          if (
-            !titleEl ||
-            !titleEl.textContent ||
-            !titleEl.getAttribute("href")
-          ) {
-            return null;
+        const titleEl = row.querySelector("td.msg2 div.d1 a.am");
+        const priceEl = row.querySelector("td.msga2-o.pp6:last-child a.amopt");
+        const roomsEl = row.querySelector(
+          "td.msga2-o.pp6:nth-child(5) a.amopt"
+        );
+        const areaEl = row.querySelector("td.msga2-o.pp6:nth-child(6) a.amopt");
+        const locationEl = row.querySelector(
+          "td.msga2-o.pp6:nth-child(4) a.amopt"
+        );
+        const imageEl = row.querySelector("td.msga2:nth-child(2) img");
+
+        // Skip if we don't have required fields
+        if (
+          !titleEl ||
+          !titleEl.textContent ||
+          !(titleEl as HTMLAnchorElement).href
+        ) {
+          return;
+        }
+
+        // Skip "buying" or "renting" listings that don't have a price
+        const priceText = priceEl?.textContent?.trim();
+        if (priceText === "pērku" || priceText === "vēlos\nīret") return;
+
+        // Extract price
+        let price: number | null = null;
+        if (priceText) {
+          const match = priceText.match(/(\d+(?:,\d+)?)/);
+          if (match) {
+            price = parseInt(match[1].replace(",", ""), 10);
           }
+        }
 
-          // Skip "buying" or "renting" listings that don't have a price
-          const priceText = priceEl?.textContent?.trim();
-          if (priceText === "pērku" || priceText === "vēlos\nīret") return null;
-
-          // Extract price - handle both sale and rent cases
-          let price: number | null = null;
-          if (priceText) {
-            const match = priceText.match(/(\d+(?:,\d+)?)/);
-            if (match) {
-              price = parseInt(match[1].replace(",", ""), 10);
-            }
+        // Get image URL
+        let imageUrl: string | null = null;
+        if (imageEl) {
+          const src = (imageEl as HTMLImageElement).src;
+          if (src && !src.includes("homes.lv.gif")) {
+            imageUrl = src.replace(".th2.", ".800.");
           }
+        }
 
-          // Get image URL
-          let imageUrl: string | null = null;
-          if (imageEl) {
-            const src = imageEl.getAttribute("src");
-            if (src && !src.includes("homes.lv.gif")) {
-              imageUrl = src.replace(".th2.", ".800.");
-            }
+        // Extract rooms
+        let rooms: number | null = null;
+        const roomsText = roomsEl?.textContent?.trim();
+        if (roomsText) {
+          const roomsMatch = roomsText.match(/\d+/);
+          if (roomsMatch) {
+            rooms = parseInt(roomsMatch[0], 10);
           }
+        }
 
-          // Extract rooms
-          let rooms: number | null = null;
-          const roomsText = roomsEl?.textContent?.trim();
-          if (roomsText) {
-            const roomsMatch = roomsText.match(/\d+/);
-            if (roomsMatch) {
-              rooms = parseInt(roomsMatch[0], 10);
-            }
+        // Extract area
+        let area: number | null = null;
+        const areaText = areaEl?.textContent?.trim();
+        if (areaText) {
+          const areaMatch = areaText.match(/\d+/);
+          if (areaMatch) {
+            area = parseInt(areaMatch[0], 10);
           }
+        }
 
-          // Extract area
-          let area: number | null = null;
-          const areaText = areaEl?.textContent?.trim();
-          if (areaText) {
-            const areaMatch = areaText.match(/\d+/);
-            if (areaMatch) {
-              area = parseInt(areaMatch[0], 10);
-            }
-          }
+        results.push({
+          title: titleEl.textContent.trim(),
+          ssUrl:
+            "https://www.ss.lv" +
+            (titleEl as HTMLAnchorElement).getAttribute("href"),
+          price,
+          rooms,
+          area,
+          district: locationEl?.textContent?.trim() || null,
+          imageUrl,
+          description: null, // We don't have description in the list view
+        });
+      });
 
-          return {
-            title: titleEl.textContent.trim(),
-            ssUrl: "https://www.ss.lv" + titleEl.getAttribute("href"),
-            price,
-            rooms,
-            area,
-            district: locationEl?.textContent?.trim() || null,
-            imageUrl,
-            description: null, // We don't have description in the list view
-          };
-        })
-        .filter((listing): listing is ScrapedListing => listing !== null);
+      return results;
     });
 
     console.log("Found", listings.length, "listings");
-
     return listings;
   } finally {
-    if (page) {
-      await page.close();
-    }
-    await browser.close();
+    await page.close();
   }
 }

@@ -26,29 +26,18 @@ type ScrapedListing = {
 };
 
 async function getBrowser() {
-  const isLocal = process.env.NODE_ENV === "development";
+  const isLocal = !!process.env.CHROME_EXECUTABLE_PATH;
 
-  const options = {
-    args: [
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-      "--disable-dev-shm-usage",
-      "--disable-gpu",
-      "--no-first-run",
-      "--no-zygote",
-      "--single-process",
-      "--disable-extensions",
-    ],
+  return puppeteer.launch({
+    args: isLocal ? puppeteer.defaultArgs() : chromium.args,
+    defaultViewport: chromium.defaultViewport,
     executablePath:
       process.env.CHROME_EXECUTABLE_PATH ||
       (await chromium.executablePath(
         "https://storage.googleapis.com/sslv-chromium/Chromium%20v126.0.0%20Pack.tar"
       )),
     headless: true,
-    ignoreHTTPSErrors: true,
-  };
-
-  return puppeteer.launch(options);
+  });
 }
 
 export async function GET() {

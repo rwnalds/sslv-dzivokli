@@ -19,7 +19,7 @@ export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const session = await auth();
-  if (!session?.user?.id) redirect("/");
+  if (!session?.user?.id || !session.user.hasPaid) redirect("/");
 
   // Get user's search criteria and latest listings
   const userCriteria = await prisma.searchCriteria.findMany({

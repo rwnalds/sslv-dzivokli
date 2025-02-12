@@ -104,7 +104,9 @@ export async function toggleSearchCriteria(
 }
 
 export async function refreshListings() {
-  const response = await fetch(process.env.BASE_URL + "/api/cron/crawler");
+  const response = await fetch(
+    process.env.NEXT_PUBLIC_BASE_URL + "/api/cron/crawler"
+  );
   const data = await response.json();
 
   if (!response.ok) {

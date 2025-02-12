@@ -21,7 +21,7 @@ self.addEventListener("notificationclick", function (event) {
   event.waitUntil(
     clients.openWindow(
       process.env.NODE_ENV === "production"
-        ? "https://petlove-psi.vercel.app/"
+        ? "https://sslv-dzivokli.vercel.app/"
         : "http://localhost:3000"
     )
   );

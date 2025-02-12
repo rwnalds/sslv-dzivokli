@@ -1,7 +1,7 @@
 {
-  "name": "PetLove",
-  "short_name": "PetLove",
-  "description": "Smart Pet Appointment Management",
+  "name": "SSpots",
+  "short_name": "SSpots",
+  "description": "Atrodi savu sapņu dzīvokli",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
@@ -18,4 +18,4 @@
       "type": "image/png"
     }
   ]
-} 
+}

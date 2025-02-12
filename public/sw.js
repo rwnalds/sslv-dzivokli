@@ -21,7 +21,7 @@ self.addEventListener("notificationclick", function (event) {
   event.waitUntil(
     clients.openWindow(
       process.env.NODE_ENV === "production"
-        ? "https://sslv-dzivokli.vercel.app/"
+        ? process.env.NEXT_PUBLIC_BASE_URL
         : "http://localhost:3000"
     )
   );

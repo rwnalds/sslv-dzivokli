@@ -23,8 +23,8 @@ export async function createCheckoutSession({ priceId }: { priceId: string }) {
     ],
     mode: "payment",
     customer_email: user.email || undefined,
-    success_url: `${process.env.BASE_URL}/api/stripe/checkout?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${process.env.BASE_URL}/pricing`,
+    success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/api/stripe/checkout?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/pricing`,
     client_reference_id: user?.id?.toString(),
     allow_promotion_codes: true,
   });

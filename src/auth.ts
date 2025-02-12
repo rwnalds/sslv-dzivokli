@@ -31,4 +31,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
   ],
+  pages: {
+    signIn: "/pricing",
+  },
+  callbacks: {
+    authorized: async ({ auth }) => {
+      if (!auth?.user) return false;
+      if (!auth.user.hasPaid) return false;
+      return true;
+    },
+  },
 });

@@ -14,6 +14,9 @@ dependencies:
   '@neondatabase/serverless':
     specifier: ^0.10.4
     version: 0.10.4
+  '@prisma/adapter-neon':
+    specifier: ^6.3.1
+    version: 6.3.1(@neondatabase/serverless@0.10.4)
   '@prisma/client':
     specifier: ^6.3.1
     version: 6.3.1(prisma@6.3.1)(typescript@5.3.3)
@@ -92,11 +95,17 @@ dependencies:
   web-push:
     specifier: ^3.6.7
     version: 3.6.7
+  ws:
+    specifier: ^8.18.0
+    version: 8.18.0
 
 devDependencies:
   '@types/web-push':
     specifier: ^3.6.4
     version: 3.6.4
+  '@types/ws':
+    specifier: ^8.5.14
+    version: 8.5.14
   autoprefixer:
     specifier: ^10.4.16
     version: 10.4.16(postcss@8.4.32)
@@ -1096,6 +1105,16 @@ packages:
     dev: true
     optional: true
 
+  /@prisma/adapter-neon@6.3.1(@neondatabase/serverless@0.10.4):
+    resolution: {integrity: sha512-yDCeqQ0EYT/DBL6G2uh01IlVrCr9Jli6SXa1yvdl/Kq4O/Hjj1i+Oxg4FskHVStLvlo6bqNxEFtLEuFCLCXG1A==}
+    peerDependencies:
+      '@neondatabase/serverless': ^0.6.0 || ^0.7.0 || ^0.8.0 || ^0.9.0 || ^0.10.0
+    dependencies:
+      '@neondatabase/serverless': 0.10.4
+      '@prisma/driver-adapter-utils': 6.3.1
+      postgres-array: 3.0.2
+    dev: false
+
   /@prisma/client@6.3.1(prisma@6.3.1)(typescript@5.3.3):
     resolution: {integrity: sha512-ARAJaPs+eBkemdky/XU3cvGRl+mIPHCN2lCXsl5Vlb0E2gV+R6IN7aCI8CisRGszEZondwIsW9Iz8EJkTdykyA==}
     engines: {node: '>=18.18'}
@@ -1115,6 +1134,12 @@ packages:
 
   /@prisma/debug@6.3.1:
     resolution: {integrity: sha512-RrEBkd+HLZx+ydfmYT0jUj7wjLiS95wfTOSQ+8FQbvb6vHh5AeKfEPt/XUQ5+Buljj8hltEfOslEW57/wQIVeA==}
+
+  /@prisma/driver-adapter-utils@6.3.1:
+    resolution: {integrity: sha512-Z30oSnSFYlzU/Z96lfApqd42EzSXwxj7iPD34iGdZ+fecGlOO9WaBY2tlzCdt7sdhxIxNGEL8tD1o4EHX8tLNA==}
+    dependencies:
+      '@prisma/debug': 6.3.1
+    dev: false
 
   /@prisma/engines-version@6.3.0-17.acc0b9dd43eb689cbd20c9470515d719db10d0b0:
     resolution: {integrity: sha512-R/ZcMuaWZT2UBmgX3Ko6PAV3f8//ZzsjRIG1eKqp3f2rqEqVtCv+mtzuH2rBPUC9ujJ5kCb9wwpxeyCkLcHVyA==}
@@ -1249,6 +1274,12 @@ packages:
 
   /@types/web-push@3.6.4:
     resolution: {integrity: sha512-GnJmSr40H3RAnj0s34FNTcJi1hmWFV5KXugE0mYWnYhgTAHLJ/dJKAwDmvPJYMke0RplY2XE9LnM4hqSqKIjhQ==}
+    dependencies:
+      '@types/node': 20.10.5
+    dev: true
+
+  /@types/ws@8.5.14:
+    resolution: {integrity: sha512-bd/YFLW+URhBzMXurx7lWByOu+xzU9+kb3RboOteXYDfW+tr+JZa99OyNmPINEGB/ahzKrEuc8rcv4gnpJmxTw==}
     dependencies:
       '@types/node': 20.10.5
     dev: true

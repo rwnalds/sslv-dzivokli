@@ -9,7 +9,7 @@ import IPhone from "./_components/iphone";
 export const metadata: Metadata = {
   title: "Sākums | SSpots",
   description:
-    "Saņem tūlītējus paziņojumus par jauniem dzīvokļu sludinājumiem SS.lv, kas atbilst taviem kritērijiem. Nekad vairs nepalaid garām savu sapņu dzīvokli.",
+    "Saņem tūlītējus paziņojumus par jauniem dzīvokļu sludinājumiem SS.lv, kas atbilst tavam budžetam un vajadzībām. Esi pirmais, kas uzzina par izdevīgiem piedāvājumiem.",
 };
 
 export const dynamic = "force-dynamic";
@@ -23,34 +23,35 @@ export default async function Page() {
 
   const features = [
     {
-      title: "Reāllaika Paziņojumi",
+      title: "Tūlītēji Paziņojumi",
       description:
-        "Saņem tūlītējus paziņojumus, kad parādās jauni dzīvokļi, kas atbilst taviem kritērijiem",
+        "Esi pirmais, kas uzzina par jauniem dzīvokļiem tavā cenu kategorijā un rajonā",
       icon: <Bell className="w-8 h-8 text-primary" />,
     },
     {
-      title: "Viedā Meklēšana",
+      title: "Precīza Meklēšana",
       description: (
         <ul className="space-y-2">
           <li className="flex items-center gap-2">
-            <Check className="w-4 text-primary" /> Cenu diapazons
+            <Check className="w-4 text-primary" /> Tavs budžeta limits
           </li>
           <li className="flex items-center gap-2">
-            <Check className="w-4 text-primary" /> Istabu skaits
+            <Check className="w-4 text-primary" /> Nepieciešamās telpas
           </li>
           <li className="flex items-center gap-2">
-            <Check className="w-4 text-primary" /> Rajona izvēle
+            <Check className="w-4 text-primary" /> Vēlamais rajons
           </li>
           <li className="flex items-center gap-2">
-            <Check className="w-4 text-primary" /> Platības prasības
+            <Check className="w-4 text-primary" /> Minimālā platība
           </li>
         </ul>
       ),
       icon: <Search className="w-8 h-8 text-primary" />,
     },
     {
-      title: "Sludinājumu Sekošana",
-      description: "Seko līdzi visiem interesējošiem sludinājumiem vienuviet",
+      title: "Izdevīgu Piedāvājumu Sekošana",
+      description:
+        "Pārskati visus aktuālos sludinājumus, kas atbilst tavām prasībām",
       icon: <Home className="w-8 h-8 text-primary" />,
     },
   ];
@@ -61,37 +62,36 @@ export default async function Page() {
       <div className="min-h-[90vh] max-w-6xl m-auto grid grid-rows-[1fr_auto] mb-24">
         <div className="flex flex-col items-center min-h-[60vh] lg:min-h-max justify-center text-center mb-24">
           <h1 className="text-3xl lg:text-5xl font-extrabold text-base-content">
-            Atrodi Savu <span className="text-primary">Sapņu Dzīvokli</span>{" "}
+            Atrodi sev{" "}
+            <span className="text-primary">piemērotāko dzīvokli</span> par labu
+            cenu
           </h1>
           <p className="py-6 lg:text-xl mb-6 text-base-content/80">
             Saņem tūlītējus paziņojumus par jauniem sludinājumiem SS.lv.{" "}
-            <u>Nekad vairs</u> nepalaid garām ideālo mājokli.
+            <u>Esi pirmais</u>, kas uzzina par izdevīgiem piedāvājumiem.
           </p>
           <Link href="/pricing" className="btn btn-primary btn-lg">
             Sākt Meklēšanu
           </Link>
         </div>
-        {/* Features Section */}
-        <div className="max-w-6xl mx-auto grid md:grid-cols-3 gap-6">
-          {features.map((feature, i) => (
-            <div key={i}>
-              <div className="card-body">
-                <div className="flex items-center gap-3 mb-4">
-                  {feature.icon}
-                  <h2 className="card-title">{feature.title}</h2>
-                </div>
-                <div className="text-base-content/70">
-                  {feature.description}
-                </div>
-              </div>
-            </div>
-          ))}
+        {/* Demo Section */}
+        <div className="max-w-6xl mx-auto flex justify-center">
+          <IPhone />
         </div>
       </div>
-
-      {/* Demo Section */}
-      <div className="max-w-6xl mx-auto flex justify-center mb-12">
-        <IPhone />
+      {/* Features Section */}
+      <div className="max-w-6xl mx-auto grid md:grid-cols-3 gap-6 mb-24">
+        {features.map((feature, i) => (
+          <div key={i}>
+            <div className="card-body">
+              <div className="flex items-start gap-3 mb-4">
+                {feature.icon}
+                <h2 className="card-title">{feature.title}</h2>
+              </div>
+              <div className="text-base-content/70">{feature.description}</div>
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Pricing + Features Section */}
@@ -112,19 +112,19 @@ export default async function Page() {
           <ul className="space-y-3 text-base-content/70">
             <li className="flex items-center gap-2 justify-center text-left">
               <Check className="w-5 h-5 text-primary" />
-              Tūlītējus paziņojumus par jauniem sludinājumiem
+              Tūlītēji paziņojumi par izdevīgiem piedāvājumiem
             </li>
             <li className="flex items-center gap-2 justify-center text-left">
               <Check className="w-5 h-5 text-primary" />
-              Neierobežotu meklēšanas kritēriju skaitu
+              Neierobežots skaits meklēšanas kritēriju
             </li>
             <li className="flex items-center gap-2 justify-center text-left">
               <Check className="w-5 h-5 text-primary" />
-              Piekļuvi visiem jaunajiem sludinājumiem
+              Piekļuve visiem jaunajiem sludinājumiem
             </li>
             <li className="flex items-center gap-2 justify-center text-left">
               <Check className="w-5 h-5 text-primary" />
-              Pa lielam visu, nav ko baigi uzskaitīt
+              Ietaupi laiku un atrodi labāko piedāvājumu
             </li>
           </ul>
         </div>

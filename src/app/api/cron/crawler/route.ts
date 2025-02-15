@@ -351,7 +351,7 @@ async function scrapeSSlv(
 
     console.log("Extracting listings...");
     // Extract listings
-    const listings = await page.evaluate(() => {
+    const listings = await page.evaluate((criteria) => {
       const rows = document.querySelectorAll("tr[id^='tr_']");
       const results: ScrapedListing[] = [];
 
@@ -390,6 +390,12 @@ async function scrapeSSlv(
           if (match) {
             price = parseInt(match[1].replace(",", ""), 10);
           }
+        }
+
+        // Skip if price is outside the criteria range
+        if (price !== null) {
+          if (criteria.minPrice && price < criteria.minPrice) return;
+          if (criteria.maxPrice && price > criteria.maxPrice) return;
         }
 
         // Get image URL
@@ -436,7 +442,7 @@ async function scrapeSSlv(
       });
 
       return results;
-    });
+    }, criteria);
 
     console.log("Found", listings.length, "listings");
     return listings;

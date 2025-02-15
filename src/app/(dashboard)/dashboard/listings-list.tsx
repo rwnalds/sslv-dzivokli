@@ -47,7 +47,6 @@ export function ListingsList({
     toast.promise(promise, {
       loading: "Mainām favorītu statusu...",
       success: (data) => {
-        router.refresh();
         return data.message || "Favorītu status mainīts!";
       },
       error: (err) => {

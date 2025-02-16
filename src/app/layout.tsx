@@ -10,6 +10,9 @@ import { Navbar } from "./_components/navbar";
 const DMSans = Outfit({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_BASE_URL || "https://sspots.lv"
+  ),
   title: {
     default: "SSpots - Atrodi Savu Sapņu Dzīvokli",
     template: "%s | SSpots",

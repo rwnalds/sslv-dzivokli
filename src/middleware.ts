@@ -5,4 +5,4 @@ export const config = {
   matcher: ["/dashboard/:path*"],
 };
 
-export const runtime = "experimental-edge";
+// export const runtime = "experimental-edge";

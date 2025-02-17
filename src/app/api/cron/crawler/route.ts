@@ -2,6 +2,7 @@ import chromium from "@sparticuz/chromium-min";
 import puppeteer, { Browser } from "puppeteer-core";
 
 import { sendNotification } from "@/app/actions";
+import { auth } from "@/auth";
 import { categories } from "@/lib/ss/categories";
 import { regions } from "@/lib/ss/regions";
 import { prisma } from "@/utils/get-prisma";
@@ -40,7 +41,19 @@ async function getBrowser() {
   });
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  // Only allow requests from our own cron job or authenticated paid users
+  const isFromCron =
+    request.headers.get("Authorization") ===
+    `Bearer ${process.env.CRON_SECRET}`;
+
+  if (!isFromCron) {
+    const session = await auth();
+    if (!session?.user?.id || !session.user.hasPaid) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+  }
+
   let browser;
   try {
     browser = await getBrowser();

@@ -1,5 +1,4 @@
 import { Metadata } from "next";
-import { redirect } from "next/navigation";
 import { auth } from "src/auth";
 import { ListingsList } from "./listings-list";
 import { SearchCriteriaList } from "./search-criteria-list";
@@ -19,12 +18,12 @@ export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const session = await auth();
-  if (!session?.user?.id || !session.user.hasPaid) redirect("/");
+  // if (!session?.user?.id || !session.user.hasPaid) redirect("/");
 
   // Get user's search criteria and latest listings
   const userCriteria = await prisma.searchCriteria.findMany({
     where: {
-      userId: session.user.id,
+      userId: session?.user.id,
     },
     orderBy: {
       createdAt: "desc",

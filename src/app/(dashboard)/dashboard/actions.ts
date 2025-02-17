@@ -1,9 +1,9 @@
 "use server";
 
 import { auth } from "@/auth";
+import { prisma } from "@/lib/db";
 import { categories } from "@/lib/ss/categories";
 import { regions } from "@/lib/ss/regions";
-import { prisma } from "@/utils/get-prisma";
 import { revalidatePath } from "next/cache";
 
 export type SearchCriteriaResponse = {

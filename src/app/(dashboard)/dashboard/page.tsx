@@ -4,7 +4,7 @@ import { ListingsList } from "./listings-list";
 import { SearchCriteriaList } from "./search-criteria-list";
 import { SearchForm } from "./search-form";
 
-import { prisma } from "@/utils/get-prisma";
+import { prisma } from "@/lib/db";
 import { NotificationButton } from "../components/NotificationButton";
 import RefreshButton from "./refresh";
 

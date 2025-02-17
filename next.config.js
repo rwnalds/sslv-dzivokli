@@ -13,6 +13,7 @@ const nextConfig = {
       },
     ];
   },
+  reactStrictMode: true,
   images: {
     remotePatterns: [
       {
@@ -27,6 +28,7 @@ const nextConfig = {
       },
     ],
   },
+  serverExternalPackages: ["@prisma/client"],
 };
 
 module.exports = nextConfig;

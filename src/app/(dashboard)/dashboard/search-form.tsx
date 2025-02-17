@@ -3,6 +3,7 @@
 import { categories } from "@/lib/ss/categories";
 import { regions } from "@/lib/ss/regions";
 import { Loader2, Search } from "lucide-react";
+import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -12,6 +13,7 @@ const ROOM_OPTIONS = [1, 2, 3, 4, 5, 6];
 
 export function SearchForm() {
   const router = useRouter();
+  const { data: session } = useSession();
   const [selectedRegion, setSelectedRegion] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [districts, setDistricts] = useState<
@@ -31,6 +33,11 @@ export function SearchForm() {
     e.preventDefault();
     const form = e.currentTarget;
     const formData = new FormData(form);
+
+    if (!session?.user?.hasPaid) {
+      router.push("/pricing");
+      return;
+    }
 
     // Get the selected district's urlSlug
     const districtName = formData.get("district")?.toString();

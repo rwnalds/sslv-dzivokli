@@ -2,6 +2,7 @@ import "./globals.css";
 
 import { GeistSans } from "geist/font/sans";
 import { Metadata } from "next";
+import { SessionProvider } from "next-auth/react";
 import { Outfit } from "next/font/google";
 import { Toaster } from "sonner";
 import { Footer } from "./_components/footer";
@@ -67,12 +68,14 @@ export default function RootLayout({
       <body
         className={`${DMSans.className} min-h-screen ${GeistSans.className}`}
       >
-        <Toaster />
-        <div className="grid grid-rows-[auto_1fr] min-h-screen">
-          <Navbar />
-          {children}
-        </div>
-        <Footer />
+        <SessionProvider>
+          <Toaster />
+          <div className="grid grid-rows-[auto_1fr] min-h-screen">
+            <Navbar />
+            {children}
+          </div>
+          <Footer />
+        </SessionProvider>
       </body>
     </html>
   );

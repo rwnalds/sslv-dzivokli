@@ -23,13 +23,7 @@ declare module "next-auth" {
   }
 }
 
-export const {
-  handlers,
-  auth,
-  signIn,
-  signOut,
-  unstable_update: update,
-} = NextAuth({
+export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
   providers: [Google],
   pages: {

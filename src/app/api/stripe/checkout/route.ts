@@ -1,5 +1,5 @@
+import { prisma } from "@/lib/db";
 import { stripe } from "@/lib/payments/stripe";
-import { prisma } from "@/utils/get-prisma";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {

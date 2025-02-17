@@ -13,6 +13,7 @@ const nextConfig = {
       },
     ];
   },
+  reactStrictMode: true,
   images: {
     remotePatterns: [
       {
@@ -20,9 +21,14 @@ const nextConfig = {
         hostname: "lh3.googleusercontent.com",
         port: "",
       },
+      {
+        protocol: "https",
+        hostname: "i.ss.lv",
+        port: "",
+      },
     ],
-    domains: ["i.ss.lv"],
   },
+  serverExternalPackages: ["@prisma/client"],
 };
 
 module.exports = nextConfig;

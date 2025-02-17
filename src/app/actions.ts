@@ -1,6 +1,6 @@
 "use server";
 
-import { prisma } from "@/utils/get-prisma";
+import { prisma } from "@/lib/db";
 import { ApiError } from "next/dist/server/api-utils";
 import { auth } from "src/auth";
 import webpush from "web-push";

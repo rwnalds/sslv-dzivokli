@@ -2,6 +2,7 @@ import "./globals.css";
 
 import { GeistSans } from "geist/font/sans";
 import { Metadata } from "next";
+import { SessionProvider } from "next-auth/react";
 import { Outfit } from "next/font/google";
 import { Toaster } from "sonner";
 import { Footer } from "./_components/footer";
@@ -10,6 +11,9 @@ import { Navbar } from "./_components/navbar";
 const DMSans = Outfit({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_BASE_URL || "https://sspots.lv"
+  ),
   title: {
     default: "SSpots - Atrodi Savu Sapņu Dzīvokli",
     template: "%s | SSpots",
@@ -64,12 +68,14 @@ export default function RootLayout({
       <body
         className={`${DMSans.className} min-h-screen ${GeistSans.className}`}
       >
-        <Toaster />
-        <div className="grid grid-rows-[auto_1fr] min-h-screen">
-          <Navbar />
-          {children}
-        </div>
-        <Footer />
+        <SessionProvider>
+          <Toaster />
+          <div className="grid grid-rows-[auto_1fr] min-h-screen">
+            <Navbar />
+            {children}
+          </div>
+          <Footer />
+        </SessionProvider>
       </body>
     </html>
   );

@@ -70,7 +70,7 @@ export default async function Page() {
             Saņem tūlītējus paziņojumus par jauniem sludinājumiem SS.lv.{" "}
             <u>Esi pirmais</u>, kas uzzina par izdevīgiem piedāvājumiem.
           </p>
-          <Link href="/pricing" className="btn btn-primary btn-lg">
+          <Link href="/dashboard" className="btn btn-primary btn-lg">
             Sākt Meklēšanu
           </Link>
         </div>

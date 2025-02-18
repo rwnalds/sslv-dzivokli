@@ -1,16 +1,15 @@
-import chromium from "@sparticuz/chromium-min";
-import puppeteer, { Browser } from "puppeteer-core";
-
 import { sendNotification } from "@/app/actions";
 import { prisma } from "@/lib/db";
 import { categories } from "@/lib/ss/categories";
 import { regions } from "@/lib/ss/regions";
 import { SearchCriteria } from "@prisma/client";
+import chromium from "@sparticuz/chromium-min";
 import { NextResponse } from "next/server";
+import puppeteer, { type Browser } from "puppeteer";
+import puppeteerCore, { Browser as BrowserCore } from "puppeteer-core";
 
 export const dynamic = "force-dynamic";
-
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 const ACTION_DELAY = 1000; // 1 second delay between actions
 
@@ -26,22 +25,33 @@ type ScrapedListing = {
 };
 
 async function getBrowser() {
-  const isLocal = !!process.env.CHROME_EXECUTABLE_PATH;
+  let browser: Browser | BrowserCore;
+  if (
+    process.env.NODE_ENV === "production" ||
+    process.env.VERCEL_ENV === "production"
+  ) {
+    const executablePath = await chromium.executablePath(
+      "https://github.com/Sparticuz/chromium/releases/download/v131.0.1/chromium-v131.0.1-pack.tar"
+    );
+    browser = await puppeteerCore.launch({
+      executablePath,
+      args: chromium.args,
+      headless: chromium.headless,
+      defaultViewport: chromium.defaultViewport,
+    });
+  } else {
+    browser = await puppeteer.launch({
+      headless: true,
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    });
+  }
 
-  return puppeteer.launch({
-    args: isLocal ? puppeteer.defaultArgs() : chromium.args,
-    defaultViewport: chromium.defaultViewport,
-    executablePath:
-      process.env.CHROME_EXECUTABLE_PATH ||
-      (await chromium.executablePath(
-        "https://storage.googleapis.com/sslv-chromium/Chromium%20v126.0.0%20Pack.tar"
-      )),
-    headless: true,
-  });
+  return browser;
 }
 
-export async function GET(request: Request) {
-  let browser;
+export async function GET() {
+  let browser: Browser | BrowserCore | undefined;
+
   try {
     browser = await getBrowser();
     const activeCriteria = await prisma.searchCriteria.findMany({
@@ -172,7 +182,7 @@ export async function GET(request: Request) {
 }
 
 async function scrapeSSlv(
-  browser: Browser,
+  browser: Browser | BrowserCore,
   criteria: SearchCriteria
 ): Promise<ScrapedListing[]> {
   const page = await browser.newPage();
@@ -218,7 +228,7 @@ async function scrapeSSlv(
     async function fillField(selector: string, value: string | number) {
       try {
         await page.waitForSelector(selector, { visible: true });
-        await page.evaluate((sel: string) => {
+        await (page as any).evaluate((sel: string) => {
           const element = document.querySelector(sel);
           if (element) {
             element.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -229,8 +239,7 @@ async function scrapeSSlv(
         const isSelect = selector.includes("select");
 
         if (isSelect) {
-          // For select elements, first verify the option exists
-          const optionExists = await page.evaluate(
+          const optionExists = await (page as any).evaluate(
             ({ sel, val }: { sel: string; val: string }) => {
               const select = document.querySelector(sel) as HTMLSelectElement;
               if (!select) return false;
@@ -255,26 +264,27 @@ async function scrapeSSlv(
 
         await new Promise((resolve) => setTimeout(resolve, 500));
 
-        // Verify the value was set correctly
         try {
           if (isSelect) {
-            const selectedValue = await page.evaluate((sel: string) => {
-              const select = document.querySelector(sel) as HTMLSelectElement;
-              if (!select) return null;
-              const selected = select.selectedOptions[0];
-              return selected ? selected.value || selected.text : null;
-            }, selector);
+            const selectedValue = await (page as any).evaluate(
+              (sel: string) => {
+                const select = document.querySelector(sel) as HTMLSelectElement;
+                if (!select) return null;
+                const selected = select.selectedOptions[0];
+                return selected ? selected.value || selected.text : null;
+              },
+              selector
+            );
 
             if (selectedValue !== value.toString()) {
               console.warn(
                 `Select ${selector} value mismatch. Expected: ${value}, Got: ${selectedValue}`
               );
-              // Retry once
               await new Promise((resolve) => setTimeout(resolve, 500));
               await page.select(selector, value.toString());
             }
           } else {
-            const fieldValue = await page.evaluate((sel: string) => {
+            const fieldValue = await (page as any).evaluate((sel: string) => {
               const input = document.querySelector(sel) as HTMLInputElement;
               return input ? input.value : null;
             }, selector);
@@ -283,7 +293,6 @@ async function scrapeSSlv(
               console.warn(
                 `Field ${selector} value mismatch. Expected: ${value}, Got: ${fieldValue}`
               );
-              // Retry once
               await new Promise((resolve) => setTimeout(resolve, 500));
               await page.type(selector, value.toString(), { delay: 100 });
             }
@@ -343,7 +352,7 @@ async function scrapeSSlv(
     // Click and wait for navigation
     await Promise.all([
       page.waitForNavigation({ waitUntil: "networkidle0" }),
-      searchButton.click(),
+      (searchButton as any).click(),
     ]);
 
     // Make sure the results are loaded
@@ -351,7 +360,7 @@ async function scrapeSSlv(
 
     console.log("Extracting listings...");
     // Extract listings
-    const listings = await page.evaluate((criteria) => {
+    const listings = await (page as any).evaluate(() => {
       const rows = document.querySelectorAll("tr[id^='tr_']");
       const results: ScrapedListing[] = [];
 
@@ -390,12 +399,6 @@ async function scrapeSSlv(
           if (match) {
             price = parseInt(match[1].replace(",", ""), 10);
           }
-        }
-
-        // Skip if price is outside the criteria range
-        if (price !== null) {
-          if (criteria.minPrice && price < criteria.minPrice) return;
-          if (criteria.maxPrice && price > criteria.maxPrice) return;
         }
 
         // Get image URL
@@ -442,10 +445,31 @@ async function scrapeSSlv(
       });
 
       return results;
-    }, criteria);
+    });
 
-    console.log("Found", listings.length, "listings");
-    return listings;
+    // Filter listings to ensure they match criteria
+    const validListings = listings.filter((listing: ScrapedListing) => {
+      if (!listing.price) return false;
+
+      const priceInRange =
+        (!criteria.minPrice || listing.price >= criteria.minPrice) &&
+        (!criteria.maxPrice || listing.price <= criteria.maxPrice);
+
+      const roomsInRange =
+        (!criteria.minRooms || (listing.rooms || 0) >= criteria.minRooms) &&
+        (!criteria.maxRooms || (listing.rooms || 0) <= criteria.maxRooms);
+
+      const areaInRange =
+        (!criteria.minArea || (listing.area || 0) >= criteria.minArea) &&
+        (!criteria.maxArea || (listing.area || 0) <= criteria.maxArea);
+
+      return priceInRange && roomsInRange && areaInRange;
+    });
+
+    console.log(
+      `Found ${listings.length} listings, ${validListings.length} match criteria`
+    );
+    return validListings;
   } finally {
     await page.close();
   }

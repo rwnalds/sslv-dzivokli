@@ -51,6 +51,7 @@ async function getBrowser() {
 
 export async function GET() {
   let browser: Browser | BrowserCore | undefined;
+
   try {
     browser = await getBrowser();
     const activeCriteria = await prisma.searchCriteria.findMany({

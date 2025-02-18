@@ -1,15 +1,18 @@
+import chromium from "@sparticuz/chromium-min";
+import puppeteer, { Browser } from "puppeteer-core";
+
 import { sendNotification } from "@/app/actions";
 import { prisma } from "@/lib/db";
 import { categories } from "@/lib/ss/categories";
 import { regions } from "@/lib/ss/regions";
 import { SearchCriteria } from "@prisma/client";
-import chromium from "@sparticuz/chromium-min";
 import { NextResponse } from "next/server";
-import { chromium as playwright } from "playwright-core";
 
 export const dynamic = "force-dynamic";
+
 export const maxDuration = 30;
-const ACTION_DELAY = 1000;
+
+const ACTION_DELAY = 1000; // 1 second delay between actions
 
 type ScrapedListing = {
   title: string;
@@ -23,8 +26,11 @@ type ScrapedListing = {
 };
 
 async function getBrowser() {
-  return playwright.launch({
-    args: chromium.args,
+  const isLocal = !!process.env.CHROME_EXECUTABLE_PATH;
+
+  return puppeteer.launch({
+    args: isLocal ? puppeteer.defaultArgs() : chromium.args,
+    defaultViewport: chromium.defaultViewport,
     executablePath:
       process.env.CHROME_EXECUTABLE_PATH ||
       (await chromium.executablePath(
@@ -39,7 +45,9 @@ export async function GET() {
   try {
     browser = await getBrowser();
     const activeCriteria = await prisma.searchCriteria.findMany({
-      where: { isActive: true },
+      where: {
+        isActive: true,
+      },
     });
     const pushSubscription = await prisma.pushSubscription.findFirst({
       where: {
@@ -58,11 +66,13 @@ export async function GET() {
 
       for (const listing of listings) {
         try {
+          // Skip listings without a valid ssUrl
           if (!listing.ssUrl || !listing.title) {
             console.warn("Skipping listing without ssUrl or title");
             continue;
           }
 
+          // Format listing data before insert
           const newListing = await prisma.foundListing.create({
             data: {
               criteriaId: criteria.id,
@@ -79,6 +89,8 @@ export async function GET() {
           });
 
           newListings.push(newListing);
+
+          // Group listings by criteria
           const criteriaListings = listingsByCriteria.get(criteria.id) || [];
           criteriaListings.push(newListing);
           listingsByCriteria.set(criteria.id, criteriaListings);
@@ -88,17 +100,20 @@ export async function GET() {
         }
       }
 
+      // Update last checked timestamp
       await prisma.searchCriteria.update({
         where: { id: criteria.id },
         data: { lastChecked: new Date() },
       });
     }
 
+    // Send aggregated notifications if there are new listings
     if (pushSubscription && newListings.length > 0) {
       const subscription = JSON.parse(
         pushSubscription.subscription
       ) as PushSubscription;
 
+      // Send one notification per criteria that has new listings
       for (const [criteriaId, listings] of listingsByCriteria.entries()) {
         const criteria = activeCriteria.find((c) => c.id === criteriaId);
         if (!criteria || listings.length === 0) continue;
@@ -122,6 +137,7 @@ export async function GET() {
         await sendNotification(subscription, message, "🏠 Jauni Sludinājumi!");
       }
 
+      // Mark all as notified in one query
       await prisma.foundListing.updateMany({
         where: {
           id: {
@@ -156,16 +172,18 @@ export async function GET() {
 }
 
 async function scrapeSSlv(
-  browser: Awaited<ReturnType<typeof playwright.launch>>,
+  browser: Browser,
   criteria: SearchCriteria
 ): Promise<ScrapedListing[]> {
-  const context = await browser.newContext({
-    userAgent:
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-  });
-  const page = await context.newPage();
+  const page = await browser.newPage();
 
   try {
+    await page.setUserAgent(
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    );
+    await page.setDefaultNavigationTimeout(30000);
+
+    // Find the region and category configuration
     const region = regions.find((r) => r.name === criteria.region);
     const category = categories.find((c) => c.value === criteria.category);
 
@@ -173,6 +191,7 @@ async function scrapeSSlv(
       throw new Error("Invalid region or category");
     }
 
+    // Construct the base URL
     let url = `https://www.ss.lv/lv/real-estate/flats/${region.urlPath}/`;
     if (criteria.district && criteria.district !== "all") {
       url += `${criteria.district}/`;
@@ -182,31 +201,103 @@ async function scrapeSSlv(
     url += `${category.urlPath}/`;
 
     console.log("Navigating to URL:", url);
-    await page.goto(url, { waitUntil: "networkidle" });
+
+    // Navigate to page and wait for content
+    await page.goto(url, { waitUntil: "networkidle0" });
+
+    // Wait for the filter table to be present
     await page
-      .waitForSelector("#filter_tbl", { timeout: 10000 })
+      .waitForSelector("#filter_tbl", { visible: true, timeout: 10000 })
       .catch(() =>
         console.log("Filter table not immediately visible, proceeding anyway")
       );
 
-    await page.waitForTimeout(ACTION_DELAY * 2);
+    // Wait for initial render
+    await new Promise((resolve) => setTimeout(resolve, ACTION_DELAY * 2));
 
     async function fillField(selector: string, value: string | number) {
       try {
-        await page.waitForSelector(selector);
+        await page.waitForSelector(selector, { visible: true });
+        await page.evaluate((sel: string) => {
+          const element = document.querySelector(sel);
+          if (element) {
+            element.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+        }, selector);
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
         const isSelect = selector.includes("select");
 
         if (isSelect) {
-          await page.selectOption(selector, value.toString());
+          // For select elements, first verify the option exists
+          const optionExists = await page.evaluate(
+            ({ sel, val }: { sel: string; val: string }) => {
+              const select = document.querySelector(sel) as HTMLSelectElement;
+              if (!select) return false;
+              return Array.from(select.options).some(
+                (option) => option.value === val || option.text === val
+              );
+            },
+            { sel: selector, val: value.toString() }
+          );
+
+          if (!optionExists) {
+            console.warn(
+              `Option ${value} not found in select ${selector}, skipping...`
+            );
+            return;
+          }
+
+          await page.select(selector, value.toString());
         } else {
-          await page.fill(selector, value.toString());
+          await page.type(selector, value.toString());
         }
 
-        await page.waitForTimeout(500);
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
+        // Verify the value was set correctly
+        try {
+          if (isSelect) {
+            const selectedValue = await page.evaluate((sel: string) => {
+              const select = document.querySelector(sel) as HTMLSelectElement;
+              if (!select) return null;
+              const selected = select.selectedOptions[0];
+              return selected ? selected.value || selected.text : null;
+            }, selector);
+
+            if (selectedValue !== value.toString()) {
+              console.warn(
+                `Select ${selector} value mismatch. Expected: ${value}, Got: ${selectedValue}`
+              );
+              // Retry once
+              await new Promise((resolve) => setTimeout(resolve, 500));
+              await page.select(selector, value.toString());
+            }
+          } else {
+            const fieldValue = await page.evaluate((sel: string) => {
+              const input = document.querySelector(sel) as HTMLInputElement;
+              return input ? input.value : null;
+            }, selector);
+
+            if (fieldValue !== value.toString()) {
+              console.warn(
+                `Field ${selector} value mismatch. Expected: ${value}, Got: ${fieldValue}`
+              );
+              // Retry once
+              await new Promise((resolve) => setTimeout(resolve, 500));
+              await page.type(selector, value.toString(), { delay: 100 });
+            }
+          }
+        } catch (verifyError) {
+          console.log(`Could not verify field ${selector}, continuing anyway`);
+        }
       } catch (error) {
         console.warn(`Failed to fill field ${selector}:`, error);
       }
     }
+
+    // Fill filters
+    console.log("Filling in filters...");
 
     if (criteria.minPrice) {
       await fillField(
@@ -221,16 +312,10 @@ async function scrapeSSlv(
       );
     }
     if (criteria.minRooms) {
-      await fillField(
-        'select[name="topt[1][min]"]',
-        criteria.minRooms.toString()
-      );
+      await fillField('select[name="topt[1][min]"]', criteria.minRooms);
     }
     if (criteria.maxRooms) {
-      await fillField(
-        'select[name="topt[1][max]"]',
-        criteria.maxRooms.toString()
-      );
+      await fillField('select[name="topt[1][max]"]', criteria.maxRooms);
     }
     if (criteria.minArea) {
       await fillField(
@@ -245,25 +330,33 @@ async function scrapeSSlv(
       );
     }
 
+    // Click search button and wait for results
+    console.log("Clicking search button...");
     const searchButton = await page.waitForSelector(
       'input[type="submit"][value="Meklēt"]'
     );
+
     if (!searchButton) {
       throw new Error("Search button not found");
     }
 
+    // Click and wait for navigation
     await Promise.all([
-      page.waitForNavigation({ waitUntil: "networkidle" }),
+      page.waitForNavigation({ waitUntil: "networkidle0" }),
       searchButton.click(),
     ]);
 
+    // Make sure the results are loaded
     await page.waitForSelector("tr[id^='tr_']");
 
-    const listings = await page.evaluate((criteria) => {
+    console.log("Extracting listings...");
+    // Extract listings
+    const listings = await page.evaluate(() => {
       const rows = document.querySelectorAll("tr[id^='tr_']");
       const results: ScrapedListing[] = [];
 
       rows.forEach((row) => {
+        // Skip banner rows
         if (row.id.includes("bnr_")) return;
 
         const titleEl = row.querySelector("td.msg2 div.d1 a.am");
@@ -277,13 +370,20 @@ async function scrapeSSlv(
         );
         const imageEl = row.querySelector("td.msga2:nth-child(2) img");
 
-        if (!titleEl?.textContent || !(titleEl as HTMLAnchorElement).href) {
+        // Skip if we don't have required fields
+        if (
+          !titleEl ||
+          !titleEl.textContent ||
+          !(titleEl as HTMLAnchorElement).href
+        ) {
           return;
         }
 
+        // Skip "buying" or "renting" listings that don't have a price
         const priceText = priceEl?.textContent?.trim();
         if (priceText === "pērku" || priceText === "vēlos\nīret") return;
 
+        // Extract price
         let price: number | null = null;
         if (priceText) {
           const match = priceText.match(/(\d+(?:,\d+)?)/);
@@ -292,11 +392,7 @@ async function scrapeSSlv(
           }
         }
 
-        if (price !== null) {
-          if (criteria.minPrice && price < criteria.minPrice) return;
-          if (criteria.maxPrice && price > criteria.maxPrice) return;
-        }
-
+        // Get image URL
         let imageUrl: string | null = null;
         if (imageEl) {
           const src = (imageEl as HTMLImageElement).src;
@@ -305,6 +401,7 @@ async function scrapeSSlv(
           }
         }
 
+        // Extract rooms
         let rooms: number | null = null;
         const roomsText = roomsEl?.textContent?.trim();
         if (roomsText) {
@@ -314,6 +411,7 @@ async function scrapeSSlv(
           }
         }
 
+        // Extract area
         let area: number | null = null;
         const areaText = areaEl?.textContent?.trim();
         if (areaText) {
@@ -333,16 +431,16 @@ async function scrapeSSlv(
           area,
           district: locationEl?.textContent?.trim() || null,
           imageUrl,
-          description: null,
+          description: null, // We don't have description in the list view
         });
       });
 
       return results;
-    }, criteria);
+    });
 
     console.log("Found", listings.length, "listings");
     return listings;
   } finally {
-    await context.close();
+    await page.close();
   }
 }

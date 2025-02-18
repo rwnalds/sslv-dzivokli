@@ -446,8 +446,29 @@ async function scrapeSSlv(
       return results;
     });
 
-    console.log("Found", listings.length, "listings");
-    return listings;
+    // Filter listings to ensure they match criteria
+    const validListings = listings.filter((listing: ScrapedListing) => {
+      if (!listing.price) return false;
+
+      const priceInRange =
+        (!criteria.minPrice || listing.price >= criteria.minPrice) &&
+        (!criteria.maxPrice || listing.price <= criteria.maxPrice);
+
+      const roomsInRange =
+        (!criteria.minRooms || (listing.rooms || 0) >= criteria.minRooms) &&
+        (!criteria.maxRooms || (listing.rooms || 0) <= criteria.maxRooms);
+
+      const areaInRange =
+        (!criteria.minArea || (listing.area || 0) >= criteria.minArea) &&
+        (!criteria.maxArea || (listing.area || 0) <= criteria.maxArea);
+
+      return priceInRange && roomsInRange && areaInRange;
+    });
+
+    console.log(
+      `Found ${listings.length} listings, ${validListings.length} match criteria`
+    );
+    return validListings;
   } finally {
     await page.close();
   }

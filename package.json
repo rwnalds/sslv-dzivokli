@@ -32,6 +32,7 @@
     "next": "^15.1.1",
     "next-auth": "5.0.0-beta.25",
     "playwright": "^1.50.1",
+    "playwright-core": "^1.50.1",
     "postgres": "^3.4.3",
     "puppeteer-core": "^22.13.1",
     "react": "^18.2.0",

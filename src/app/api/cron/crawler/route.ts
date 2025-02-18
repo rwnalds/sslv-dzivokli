@@ -28,7 +28,7 @@ async function getBrowser() {
     executablePath:
       process.env.CHROME_EXECUTABLE_PATH ||
       (await chromium.executablePath(
-        "https://storage.googleapis.com/sslv-chromium/Chromium%20v126.0.0%20Pack.tar"
+        "https://github.com/Sparticuz/chromium/releases/download/v126.0.0/chromium-v126.0.0-pack.tar"
       )),
     headless: true,
   });

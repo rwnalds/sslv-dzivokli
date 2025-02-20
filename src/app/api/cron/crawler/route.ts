@@ -132,17 +132,15 @@ export async function GET() {
           ? `${criteria.region}, ${criteria.district}`
           : criteria.region;
 
-        const priceRange = listings
-          .map((l) => l.price)
-          .filter(Boolean)
-          .sort((a, b) => (a || 0) - (b || 0));
-
-        let message = `Atrasti ${listings.length} jauni sludinājumi rajonā ${location}`;
-        if (priceRange.length > 0) {
-          message += ` (${priceRange[0]}€ - ${
-            priceRange[priceRange.length - 1]
-          }€)`;
+        let priceRange: string;
+        if (criteria.minPrice && criteria.maxPrice) {
+          priceRange = `${criteria.minPrice}€ - ${criteria.maxPrice}€`;
+        } else if (criteria.minPrice) {
+          priceRange = `>${criteria.minPrice}€`;
+        } else {
+          priceRange = `0€ - ${criteria.maxPrice}€`;
         }
+        let message = `Atrasti ${listings.length} jauni sludinājumi rajonā ${location} (${priceRange})`;
 
         await sendNotification(subscription, message, "🏠 Jauni Sludinājumi!");
       }

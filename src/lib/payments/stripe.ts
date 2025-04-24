@@ -3,10 +3,12 @@ import Stripe from "stripe";
 import { getCurrentUser } from "../session";
 
 export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2025-01-27.acacia",
+  apiVersion: "2025-03-31.basil",
 });
 
-export async function createCheckoutSession({ priceId }: { priceId: string }) {
+export async function createCheckoutSession(formData: FormData) {
+  const priceId = formData.get("priceId") as string;
+
   const user = await getCurrentUser();
 
   if (!user) {
@@ -25,8 +27,11 @@ export async function createCheckoutSession({ priceId }: { priceId: string }) {
     customer_email: user.email || undefined,
     success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/api/stripe/checkout?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/pricing`,
-    client_reference_id: user?.id?.toString(),
+    client_reference_id: user.id?.toString(),
     allow_promotion_codes: true,
+    metadata: {
+      userId: user.id?.toString() || "",
+    },
   });
 
   redirect(stripeSession.url!);

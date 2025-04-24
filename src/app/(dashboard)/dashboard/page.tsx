@@ -5,6 +5,7 @@ import { SearchCriteriaList } from "./search-criteria-list";
 import { SearchForm } from "./search-form";
 
 import { prisma } from "@/lib/db";
+import { redirect } from "next/navigation";
 import { NotificationButton } from "../components/NotificationButton";
 import RefreshButton from "./refresh";
 
@@ -18,6 +19,10 @@ export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const session = await auth();
+
+  if (!session?.user.hasPaid) {
+    redirect("/pricing");
+  }
 
   // Get user's search criteria and latest listings
   const userCriteria = await prisma.searchCriteria.findMany({

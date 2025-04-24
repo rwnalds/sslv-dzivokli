@@ -15,8 +15,6 @@ export async function GET(request: NextRequest) {
       expand: ["line_items"],
     });
 
-    console.log(session);
-
     // For one-time payments, we only need to verify the payment status
     if (session.payment_status !== "paid") {
       throw new Error("Payment not completed");
@@ -45,11 +43,14 @@ export async function GET(request: NextRequest) {
       },
     });
 
+    // Redirect to a success page that will handle session update and dashboard redirect
     return NextResponse.redirect(new URL("/dashboard", request.url));
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error occurred";
     console.error("Error handling successful checkout:", errorMessage);
-    return NextResponse.redirect(new URL("/error", request.url));
+    return NextResponse.redirect(
+      new URL("/pricing?error=payment-failed", request.url)
+    );
   }
 }

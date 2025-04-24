@@ -2,18 +2,13 @@ import type { NextAuthConfig } from "next-auth";
 import Google from "next-auth/providers/google";
 import { getUserById } from "./lib/user";
 
-// Notice this is only an object, not a full Auth.js instance
 export default {
   providers: [Google],
   pages: {
     signIn: "/pricing",
+    error: "/error",
   },
   callbacks: {
-    authorized: async ({ auth }) => {
-      if (!auth?.user) return false;
-      if (!auth.user.hasPaid) return false;
-      return true;
-    },
     async session({ token, session }) {
       if (session.user) {
         if (token.sub) {
@@ -24,12 +19,12 @@ export default {
           session.user.email = token.email;
         }
 
-        if (token.hasPaid) {
-          session.user.hasPaid = token.hasPaid;
+        if (typeof token.hasPaid !== "undefined") {
+          session.user.hasPaid = token.hasPaid as boolean;
         }
 
-        session.user.name = token.name;
-        session.user.image = token.picture;
+        session.user.name = token.name as string;
+        session.user.image = token.picture as string;
       }
 
       return session;

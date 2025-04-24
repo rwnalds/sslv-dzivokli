@@ -1,6 +1,9 @@
 import { signIn } from "@/auth";
-import { checkoutAction } from "@/lib/payments/actions";
-import { getStripePrices, getStripeProducts } from "@/lib/payments/stripe";
+import {
+  createCheckoutSession,
+  getStripePrices,
+  getStripeProducts,
+} from "@/lib/payments/stripe";
 import { getCurrentUser } from "@/lib/session";
 import { Bell, Check, Search } from "lucide-react";
 import { Metadata } from "next";
@@ -14,7 +17,11 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default async function PricingPage() {
+export default async function PricingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const user = await getCurrentUser();
 
   const [prices, products] = await Promise.all([
@@ -22,7 +29,7 @@ export default async function PricingPage() {
     getStripeProducts(),
   ]);
 
-  if (user && user?.hasPaid) {
+  if (user?.hasPaid) {
     redirect("/dashboard");
   }
 
@@ -108,7 +115,7 @@ export default async function PricingPage() {
               const formData = new FormData();
 
               formData.append("priceId", basePrice?.id || "");
-              await checkoutAction(formData);
+              await createCheckoutSession(formData);
             }}
           >
             <input type="hidden" name="priceId" value={basePrice?.id} />

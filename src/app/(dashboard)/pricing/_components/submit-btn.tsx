@@ -14,9 +14,7 @@ export function SubmitButton({
 
   if (hasPaid) {
     return (
-      <button className="btn btn-primary w-full" disabled>
-        Skatīt sludinājumus
-      </button>
+      <button className="btn btn-primary w-full">Skatīt sludinājumus</button>
     );
   }
 
